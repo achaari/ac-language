@@ -1,3 +1,5 @@
+.include "aclangdesc.h" 
+
 /* CmplProc prototypes */
 .statement_block;
 .variable_declaration;
