@@ -1,4 +1,4 @@
-.include "aclangdesc.h" 
+.include "acdluti.h" 
 
 /* CmplProc prototypes */
 .statement_block;
@@ -6,69 +6,76 @@
 .function_definition;
 .expression;
 
-/* CmplProc definition */
-.variable_reference : ident ['(' { [')' ,] { <expressions> [')' ,] ',' * } } ] ;
-.variable_typecast  : ~as {ident [%("::",".") *] ;
-.variable_extand	: { [%("->", "::", ":", ".")  <variable_reference> * ] } [<variable_typecast>] ;
+/* Type definition */
+.type_name : {ident ["::" *] } ; /* exmpl : NameSpace::Package::Object */
+
+/* Variable definition */
+.variable_reference : ident ['(' [')' ;] { <expressions> [',' *] } ')' ] ; /* variable reference or function call */
+
+.variable_extand    : { [%("->", "::", ":", ".")  <variable_reference> * ] } [~as <type_name>] ;
 
 .unit_expression : 
-	{
-		/* primary expression */
-		[literal ,] 
-		['(' <expression> ')' 
-			{ 
-				['?' <expressions> ':' <expression> ,]  /* conditional expression    */
-				[ <variable_extand> ] 					/* member acess or type cast */
-			} 
-	    ,] 
-		<variable_reference> [<variable_extand>] /* variable reference or function call */
-	}
-	[%("++", "--") ] 	/* expression postfix  */	   
-	[%("=", "+=", "-=", "*=", "/=", "&=", "|=") <expression> ] 
-	[%("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<" "!=", "+", "-", "*", "/", "^") <expression> ] 
-	;
-	
+    {
+        /* primary expression */
+        [literal ,] 
+        ['(' <expression> ')' 
+            { 
+                ['?' <expressions> ':' <expression> ,]  /* conditional expression    */
+                [ <variable_extand> ]                   /* member acess or type cast */
+            } 
+        ,] 
+        <variable_reference> [<variable_extand>] /* variable reference or function call */
+    }
+    [%("++", "--") ]    /* expression postfix  */      
+    [%("=", "+=", "-=", "*=", "/=", "&=", "|=") <expression> ] 
+    [%("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<" "!=", "+", "-", "*", "/", "^") <expression> ] 
+    ;
+    
 .expression : 
-	[%("++", "--") <expression> ; ]  /* expression Prefix  */
-	[%("!", "-", "+", "&", "*", "~", "$", "@") <unit_expression> ;
+    [~(typeof, sizeof) '(' <type_name> ')' ;]
+    [%("++", "--") <expression> ; ]  /* expression Prefix  */
+    [%("!", "-", "+", "&", "*", "~", "$", "@") <unit_expression> 
+    [~(is, extend) <type_name> ]
+    ;
 
 .expression_statement : 
-	[';' ; ] 					/* No opration statement */
-	[':' ident ;]				/* label defition (goto) */
-	[~(break,continue) ';' ;]   
-	[~goto ident ';' ;]
-	[~return [<expression>] ';' ;]
-	[<variable_declaration> ;]
-	<expression> ';' 
-	;
+    [';' ; ]                    /* No opration statement */
+    [':' ident ;]               /* label defition (goto) */
+    [~(break,continue) ';' ;]   
+    [~goto ident ';' ;]
+    [~return [<expression>] ';' ;]
+    [<variable_declaration> ;]
+    <expression> ';' 
+    ;
 
 .block_statement : 
-	[<statement_block> ;]
-	[~(if,while) '(' <expression> ')' <block_statement> ;] 
-	[~do <block_statement> ~while '(' <expression> ')' ';' ;] 
-	[~switch '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;]
-	[~for '(' <expression_statement> { [';' ,] <expression>  ';'} {[')' ,] <expression> ')' } <block_statement> ;]
-	[~foreach '(' <expression> ~in <expression> [ ':' <expression> ] ')' } <block_statement> ;]
-	<expression_statement> 
-	;
-	
+    [<statement_block> ;]
+    [~if { '(' <expression> ')' <block_statement> [~else *] } ;] 
+    [~while '(' <expression> ')' <block_statement> ;]
+    [~do <block_statement> ~while '(' <expression> ')' ';' ;] 
+    [~switch '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;]
+    [~for '(' <expression_statement> { [';' ,] <expression>  ';'} {[')' ,] <expression> ')' } <block_statement> ;]
+    [~foreach '(' <expression> ~in <expression> [ ':' <expression> ] ')' } <block_statement> ;]
+    <expression_statement> 
+    ;
+    
 .statement_block : '{' { ['}' ,] <block_statement> * } ;
 
-.variable_definition : ident [<variable_typecast>] ['=' <expression> ] ;
+.variable_definition : ident [~as <type_name>] ['=' <expression> ] ;
 
 .object_member : 
-	[~(public, private, protected, internal, extern, sealed, static, virtual, const)] 
-	[~var <variable_definition> ';' ;]
-	<function_definition> ;
+    [~(public, private, protected, internal, extern, sealed, static, virtual, const)] 
+    [~var <variable_definition> ';' ;]
+    <function_definition> ;
 
 /* CmplProc entry-point */
 .variable_declaration : ~(local,global) <variable_definition> [',' <variable_definition> ;] ';' ;
 .function_definition  : ~function ident '(' { [')' ,] { ident [')' ,] ',' * } } [';' ;] <statement_block> ;
-.object_definition	  : ~object ident '{' { <object_member> ['}' ';' ,] * } ;
+.object_definition    : ~object ident [':' { <type_name> [',' *] } ] '{' { <object_member> ['}' ';' ,] * } ;
 
 /* Main CmplProc */
 .main : 
-	[<variable_declaration> ;]
-	[<object_definition>    ;]
-	[<function_definition>  ;] 
-	;
+    [<variable_declaration> ;]
+    [<object_definition>    ;]
+    [<function_definition>  ;] 
+    ;
