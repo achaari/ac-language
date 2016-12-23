@@ -6,28 +6,29 @@
 .function_definition;
 .expression;
 
-/* Type definition */
-.type_name : {ident ["::" *] } ; /* exmpl : NameSpace::Package::Object */
+/* Type definition, exmpl : Object, Package::Object, NameSpace::Package::Object */
+.type_name : {ident ["::" *] } ;
 
-/* Variable definition */
-.variable_reference : ident ['(' [')' ;] { <expressions> [',' *] } ')' ] ; /* variable reference or function call */
-
-.variable_extand    : { [%("->", "::", ":", ".")  <variable_reference> * ] } [~as <type_name>] ;
+/* variable/member reference or function call */
+.variable_name   : ident ['(' [')' ;] { <expressions> [',' *] } ')' ] ; 
 
 .unit_expression : 
-    {
-        /* primary expression */
-        [literal ,] 
-        ['(' <expression> ')' 
-            { 
-                ['?' <expressions> ':' <expression> ,]  /* conditional expression    */
-                [ <variable_extand> ]                   /* member acess or type cast */
-            } 
-        ,] 
-        <variable_reference> [<variable_extand>] /* variable reference or function call */
-    }
-    [%("++", "--") ]    /* expression postfix  */      
+    /* primary expression : literal or ( expression ) or variable */
+    { [literal ,] ['(' <expression> ')' ,] <variable_name> }   
+    
+    /* Extend access */
+    { [%("->", "::", ":", ".")  <variable_name> * ] }
+    
+    /* expression postfix */ 
+    [%("++", "--") ]    
+
+    /* Type cast */
+    [~as <type_name>]    
+    
+    /* affectation operator */
     [%("=", "+=", "-=", "*=", "/=", "&=", "|=") <expression> ] 
+    
+    /* arithmetic or logic operator */
     [%("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<" "!=", "+", "-", "*", "/", "^") <expression> ] 
     ;
     
@@ -36,6 +37,7 @@
     [%("++", "--") <expression> ; ]  /* expression Prefix  */
     [%("!", "-", "+", "&", "*", "~", "$", "@") <unit_expression> 
     [~(is, extend) <type_name> ]
+    ['?' <expressions> ':' <expression> ]
     ;
 
 .expression_statement : 
