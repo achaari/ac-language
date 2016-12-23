@@ -17,57 +17,57 @@
     { [literal ,] ['(' <expression> ')' ,] <variable_name> }   
     
     /* Extend access */
-    { [%("->", "::", ":", ".")  <variable_name> * ] }
+    { [ %("->", "::", ":", ".")  <variable_name> * ] }
     
     /* expression postfix */ 
-    [%("++", "--") ]    
+    [ %("++", "--") ]    
 
     /* Type cast */
-    [~as <type_name>]    
+    [~as <type_name> ]    
     
     /* affectation operator */
-    [%("=", "+=", "-=", "*=", "/=", "&=", "|=") <expression> ] 
+    [ %("=", "+=", "-=", "*=", "/=", "&=", "|=") <expression> ] 
     
     /* arithmetic or logic operator */
-    [%("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<" "!=", "+", "-", "*", "/", "^") <expression> ] 
+    [ %("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<" "!=", "+", "-", "*", "/", "^") <expression> ] 
     ;
     
 .expression : 
-    [~(typeof, sizeof) '(' <type_name> ')' ;]
-    [%("++", "--") <expression> ; ]  /* expression Prefix  */
-    [%("!", "-", "+", "&", "*", "~", "$", "@") <unit_expression> 
-    [~(is, extend) <type_name> ]
-    ['?' <expressions> ':' <expression> ]
+    [ ~(typeof, sizeof) '(' <type_name> ')' ;]
+    [ %("++", "--") <expression> ; ]  /* expression Prefix  */
+    [ %("!", "-", "+", "&", "*", "~", "$", "@") <unit_expression> 
+    [ ~(is, extend) <type_name> ]
+    [ '?' <expressions> ':' <expression> ]
     ;
 
 .expression_statement : 
-    [';' ; ]                    /* No opration statement */
-    [':' ident ;]               /* label defition (goto) */
-    [~(break,continue) ';' ;]   
-    [~goto ident ';' ;]
-    [~return [<expression>] ';' ;]
-    [<variable_declaration> ;]
+    [ ';' ; ]                    /* No opration statement */
+    [ ':' ident ;]               /* label defition (goto) */
+    [ ~(break,continue) ';' ;]   
+    [ ~goto ident ';' ;]
+    [ ~return [<expression>] ';' ;]
+    [ <variable_declaration> ;]
     <expression> ';' 
     ;
 
 .block_statement : 
-    [<statement_block> ;]
-    [~if { '(' <expression> ')' <block_statement> [~else *] } ;] 
-    [~while '(' <expression> ')' <block_statement> ;]
-    [~do <block_statement> ~while '(' <expression> ')' ';' ;] 
-    [~switch '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;]
-    [~for '(' <expression_statement> { [';' ,] <expression>  ';'} {[')' ,] <expression> ')' } <block_statement> ;]
-    [~foreach '(' <expression> ~in <expression> [ ':' <expression> ] ')' } <block_statement> ;]
+    [ <statement_block> ;]
+    [ ~if { '(' <expression> ')' <block_statement> [~else *] } ;] 
+    [ ~while '(' <expression> ')' <block_statement> ;]
+    [ ~do <block_statement> ~while '(' <expression> ')' ';' ;] 
+    [ ~switch '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;]
+    [ ~for '(' <expression_statement> { [';' ,] <expression>  ';'} {[')' ,] <expression> ')' } <block_statement> ;]
+    [ ~foreach '(' <expression> ~in <expression> [ ':' <expression> ] ')' } <block_statement> ;]
     <expression_statement> 
     ;
     
 .statement_block : '{' { ['}' ,] <block_statement> * } ;
 
-.variable_definition : ident [~as <type_name>] ['=' <expression> ] ;
+.variable_definition : ident [ ~as <type_name>] [ '=' <expression> ] ;
 
 .object_member : 
-    [~(public, private, protected, internal, extern, sealed, static, virtual, const)] 
-    [~var <variable_definition> ';' ;]
+    [ ~(public, private, protected, internal, extern, sealed, static, virtual, const)] 
+    [ ~var <variable_definition> ';' ;]
     <function_definition> ;
 
 /* CmplProc entry-point */
