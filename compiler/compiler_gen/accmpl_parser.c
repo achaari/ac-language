@@ -26,14 +26,23 @@ typedef enum {
     STEP_TYPE_OPTSEQ,
     DEF_STEP(EXEC_PROC),
     DEF_STEP(LITERAL),
+    DEF_STEP(KEYWORD),
+    DEF_STEP(MULTI_KEYWORD),
     DEF_STEP(GETIDENT),
     DEF_STEP(STRCODE),   
+    DEF_STEP(MULTI_STRCODE),
     DEF_STEP(SYMBOL)
 } e_step_type_;
+
+typedef struct str_list_ {
+    char *codes;
+    struct str_list_ *nextp;
+} ac_str_list_, *pac_str_list_;
 
 typedef struct step_ {
     e_step_type_ type;
     union {
+        pac_str_list_ strlistp;
         char idents[MAX_LEN];
         char *codes;
         char chr;
@@ -221,10 +230,30 @@ static pac_step_ ac_get_step_child(PTR inputp, pac_step_ rootp, char stopchar)
     return(firstp);
 }
 
+static int ac_add_strlist(char *str, pac_str_list_ *firstp, pac_str_list_ *currentp)
+{
+    pac_str_list_ strlistp = mem_get(sizeof(ac_str_list_));
+
+    if (!strlistp) return(FALSE);
+
+    strlistp->codes = str;
+
+    if (!*firstp) {
+        *firstp = *currentp = strlistp;
+    }
+    else {
+        (*currentp)->nextp = strlistp;
+        *currentp = strlistp;
+    }
+
+    return(TRUE);
+}
+
 static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 {
     pac_step_ step;
-    char idents[MAX_LEN];
+    pac_str_list_ strlistp;
+    char idents[MAX_LEN], *identp;
     char chr = get(inputp);
 
     switch (chr) {
@@ -265,6 +294,12 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_free_step(&step);
                 return(NULLP);
             }
+
+            if (check_char(inputp, ']')) {
+                /* Optional Step */
+                return(step);
+            }
+
             step->childp = ac_get_step_child(inputp, step, ']');
             if (!step->childp && step->type == STEP_TYPE_OPTSEQ) {
                 ac_error(ERROR_MEMORY_ALLOC, "seqchild");
@@ -296,6 +331,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 return(NULLP);
             }
             if (!get_string(inputp, &step->datap.codes)) {
+                ac_error(ERROR_EXPECTED, "string");
                 ac_free_step(&step);
                 return(NULLP);
             }
@@ -320,6 +356,92 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
             strcpy(step->datap.idents, idents); /* ToDo validate proc Name */
             return(step);
 
+        case '~' :
+            if (check_char(inputp, '(')) {
+                step = ac_new_step(STEP_TYPE_MULTI_KEYWORD, rootp, curstepp);
+                if (!step) {
+                    ac_error(ERROR_MEMORY_ALLOC, "keyliste");
+                    return(NULLP);
+                }
+
+                strlistp = NULLP;
+
+                while (next(inputp)) {
+                    if (!(identp = get_ident(inputp))) {                    
+                        ac_error(ERROR_EXPECTED, "identifier");
+                        return(NULLP);
+                    }
+                    else if (! ac_add_strlist(identp, &step->datap.strlistp, &strlistp)) {
+                        ac_error(ERROR_MEMORY_ALLOC, "keyliste");
+                        return(NULLP);
+                    }
+                    
+                    if (check_char(inputp, ',')) {
+                        continue;
+                    }
+                    else if (check_char(inputp, ')')) {
+                        break;
+                    }
+                    else {
+                        ac_error(ERROR_EXPECTED, "char", ')');
+                        return(NULLP);
+                    }
+                }
+            }
+            else {
+                if (! get_identstr(inputp, idents)) {
+                    ac_error(ERROR_EXPECTED, "identifier");
+                    return(NULLP);
+                }
+
+                step = ac_new_step(STEP_TYPE_KEYWORD, rootp, curstepp);
+                if (!step) {
+                    ac_error(ERROR_MEMORY_ALLOC, "keyword");
+                    return(NULLP);
+                }
+
+                strcpy(step->datap.idents, idents);             
+            }
+            return(step);
+
+        case '%' :
+            if (check_char(inputp, '(')) {
+                step = ac_new_step(STEP_TYPE_MULTI_STRCODE, rootp, curstepp);
+                if (!step) {
+                    ac_error(ERROR_MEMORY_ALLOC, "multicode");
+                    return(NULLP);
+                }
+
+                strlistp = NULLP;
+
+                while (next(inputp)) {
+                    if (!get_string(inputp, &identp)) {
+                        ac_error(ERROR_EXPECTED, "string");
+                        return(NULLP);
+                    }
+                    else if (!ac_add_strlist(identp, &step->datap.strlistp, &strlistp)) {
+                        ac_error(ERROR_MEMORY_ALLOC, "multicode");
+                        return(NULLP);
+                    }
+
+                    if (check_char(inputp, ',')) {
+                        continue;
+                    }
+                    else if (check_char(inputp, ')')) {
+                        break;
+                    }
+                    else {
+                        ac_error(ERROR_EXPECTED, "char", ')');
+                        return(NULLP);
+                    }
+                }
+            }
+            else {
+                return(NULLP);
+            }
+
+            return(step);
+
         default:
             push_back(inputp);
             if (! get_identstr(inputp, idents)) {
@@ -330,7 +452,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
             if (iseqstr(idents, "ident")) {
                 step = ac_new_step(STEP_TYPE_GETIDENT, rootp, curstepp);
             }
-            if (iseqstr(idents, "literal")) {
+            else if (iseqstr(idents, "literal")) {
                 step = ac_new_step(STEP_TYPE_LITERAL, rootp, curstepp);
             }
             else {
@@ -382,7 +504,7 @@ static int ac_proc(PTR inputp)
         proc.type = PROC_TYPE_MAIN;
     }
 
-    if (proc.type && !get_identstr(inputp, proc.names)) {
+    if (proc.type > PROC_TYPE_MAIN && !get_identstr(inputp, proc.names)) {
         ac_error(ERROR_PROC_NAME);
         return(FALSE);
     }
