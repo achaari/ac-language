@@ -12,13 +12,20 @@
 /* variable/member reference or function call */
 .variable_name   : ident ['(' [')' ;] { <expression> [',' *] } ')' ] ; 
 
+.lamda_definition :
+    /* nested fonction / lampda expression */
+    ['(' { [')' ,] { ident [')' ,] ',' * } } ')' ['{' <block_statement> '}' ;] "=>" '(' <expressions> ')' ;]
+    
+    /* function pointer */
+    <type_name> { ['.'  <variable_name> * ] };
+    
 .variable_expression :
 
     /* literal value : constante (int, float, char) or string literal */
     [literal ;]
     
-    /* expression Lampda */
-    [ '@' '(' { [')' ,] ident [',' *] } ')' ] '{' <block_statement> '}' ;] 
+    /* lampda expression */
+    [ '@' <lamda_definition> ;]
     
     /* typeof / sizeof functions */
     [ ~(typeof, sizeof) '(' <type_name> ')' ;]
