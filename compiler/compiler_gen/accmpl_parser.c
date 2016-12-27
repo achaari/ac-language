@@ -4,7 +4,9 @@
 
 #define MAX_LEN 100
 
+#ifndef AC_MANAGE_ERROR
 #define ac_error(a, ...)
+#endif
 
 const char *rep = "D:\\ach projects\\accmplgen\\acdir\\";
 
@@ -18,12 +20,15 @@ typedef enum {
 typedef enum {
     STEP_TYPE_NAN = 0,
     STEP_TYPE_PROCSEQ,
-    STEP_TYPE_PROCSEQ_ACCEPT,
+    STEP_TYPE_PROC_ACCEPT,
     STEP_TYPE_PROCSEQ_RECALL,
     STEP_TYPE_PROCSEQ_BREAK,
     STEP_TYPE_OPTSEQ,
+    DEF_STEP(EXEC_PROC),
+    DEF_STEP(LITERAL),
     DEF_STEP(GETIDENT),
     DEF_STEP(STRCODE),   
+    DEF_STEP(SYMBOL)
 } e_step_type_;
 
 typedef struct step_ {
@@ -31,6 +36,7 @@ typedef struct step_ {
     union {
         char idents[MAX_LEN];
         char *codes;
+        char chr;
     } datap;
     struct step_ *rootp;
     struct step_ *headp;
@@ -143,7 +149,7 @@ static pac_step_ ac_get_control_step(PTR inputp, e_step_type_ type, pac_step_ ro
     if (curstepp && !*curstepp && (rootp->type == STEP_TYPE_OPTSEQ)) {
         /* Pure control optional step */
         rootp->type = rootp->headp->type + type - STEP_TYPE_PROCSEQ;
-        rootp->headp->type = STEP_TYPE_NAN; /* pour ne pas libérer le datap */
+        rootp->headp->type = STEP_TYPE_NAN; /* To avoid freeing datap */
         mem_copy(&rootp->headp->datap, &rootp->datap, sizeof(rootp->datap));
         ac_free_step(&rootp->headp);
 
@@ -157,11 +163,13 @@ static pac_step_ ac_get_control_step(PTR inputp, e_step_type_ type, pac_step_ ro
         }
     }
 
-    step->headp = ac_find_current_procseq(rootp);
-    if (!step->headp) {
-        ac_free_step(&step);
-        ac_error(ERROR_NOT_IN_POCSEQ);
-        return(NULLP);
+    if (type != STEP_TYPE_PROC_ACCEPT) {
+        step->headp = ac_find_current_procseq(rootp);
+        if (!step->headp) {
+            ac_free_step(&step);
+            ac_error(ERROR_NOT_IN_POCSEQ);
+            return(NULLP);
+        }
     }
 
     return(step);
@@ -178,6 +186,22 @@ static pac_step_ ac_get_step_child(PTR inputp, pac_step_ rootp, char stopchar)
         else if (check_char(inputp, '*')) {
             /* Recall ProcSequence */
             if (! ac_get_control_step(inputp, STEP_TYPE_PROCSEQ_RECALL, rootp, &nextp, stopchar)) {
+                ac_error(ERROR_INVALID_STEP);
+                ac_free_step(&firstp);
+                return(NULL);
+            }
+        }
+        else if (check_char(inputp, ',')) {
+            /* Break ProcSequence */
+            if (!ac_get_control_step(inputp, STEP_TYPE_PROCSEQ_BREAK, rootp, &nextp, stopchar)) {
+                ac_error(ERROR_INVALID_STEP);
+                ac_free_step(&firstp);
+                return(NULL);
+            }
+        }
+        else if (check_char(inputp, ';')) {
+            /* Accept current Proc */
+            if (!ac_get_control_step(inputp, STEP_TYPE_PROC_ACCEPT, rootp, &nextp, stopchar)) {
                 ac_error(ERROR_INVALID_STEP);
                 ac_free_step(&firstp);
                 return(NULL);
@@ -205,7 +229,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 
     switch (chr) {
         case '{':
-            if (rootp && rootp->type == STEP_TYPE_OPTSEQ) {
+            if (rootp && !rootp->headp && rootp->type == STEP_TYPE_OPTSEQ) {
                 ac_error(ERROR_INVALID_STEP, "procseq");
                 return(NULLP);
             }
@@ -224,7 +248,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
             return(step);
 
         case '[':
-            if (rootp && rootp->type == STEP_TYPE_OPTSEQ) {
+            if (rootp && !rootp->headp && rootp->type == STEP_TYPE_OPTSEQ) {
                 ac_error(ERROR_INVALID_STEP, "optseq");
                 return(NULLP);
             }
@@ -249,6 +273,21 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
             }
             return(step);
 
+        case '\'':
+            chr = get(inputp);
+            if (chr == EOF || !check_char(inputp, '\'')) {
+                ac_error(ERROR_INVALID_SYMBOL);
+                return(NULLP);
+            }
+
+            step = ac_new_step(STEP_TYPE_SYMBOL, rootp, curstepp);
+            if (!step) {
+                ac_error(ERROR_MEMORY_ALLOC, "symbol");
+                return(NULLP);
+            }
+            step->datap.chr = chr;
+            return(step);
+
         case '"':
             push_back(inputp);
             step = ac_new_step(STEP_TYPE_STRCODE, rootp, curstepp);
@@ -261,7 +300,25 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 return(NULLP);
             }
             return(step);
-            break;
+
+        case '<' :
+            if (! get_identstr(inputp, idents)) {
+                ac_error(ERROR_EXPECTED, "identifier");
+                return(NULLP);
+            }
+            else if (!check_char(inputp, '>')) {
+                ac_error(ERROR_EXPECTED, "char", '>');
+                return(NULLP);
+            }
+
+            step = ac_new_step(STEP_TYPE_EXEC_PROC, rootp, curstepp);
+            if (!step) {
+                ac_error(ERROR_MEMORY_ALLOC, "execproc");
+                return(NULLP);
+            }
+
+            strcpy(step->datap.idents, idents); /* ToDo validate proc Name */
+            return(step);
 
         default:
             push_back(inputp);
@@ -272,6 +329,9 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 
             if (iseqstr(idents, "ident")) {
                 step = ac_new_step(STEP_TYPE_GETIDENT, rootp, curstepp);
+            }
+            if (iseqstr(idents, "literal")) {
+                step = ac_new_step(STEP_TYPE_LITERAL, rootp, curstepp);
             }
             else {
                 ac_error(ERROR_UNEXPECTED_IDENT, idents);
@@ -331,7 +391,7 @@ static int ac_proc(PTR inputp)
         return(ac_add_proc(&proc, FALSE) != NULLP);
     }
     else if (! check_char(inputp, ':')) {
-        ac_error(ERROR_EXPECTED, ":");
+        ac_error(ERROR_EXPECTED, "char", ':');
         return(FALSE);
     }
 
