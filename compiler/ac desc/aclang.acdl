@@ -1,4 +1,4 @@
-.include "acdluti.h" 
+//.include "acdluti.h" 
 
 /* CmplProc prototypes */
 .statement_block;
@@ -51,12 +51,12 @@
     [ %("=", "+=", "-=", "*=", "/=", "&=", "|=") <expression> ] 
     
     /* arithmetic or logic operator */
-    [ %("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<" "!=", "+", "-", "*", "/", "^") <expression> ] 
+    [ %("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<", "!=", "+", "-", "*", "/", "^") <expression> ] 
     ;
     
 .expression : 
     [ %("++", "--") <expression> ; ]  /* expression Prefix  */
-    [ %("!", "-", "+", "&", "*", "~") <unit_expression> 
+    [ %"!-+&*~" <unit_expression> ]
     [ ~(is, extend) <type_name> ]
     [ '?' <expression> ':' <expression> ]
     ;
@@ -78,7 +78,7 @@
     [ ~do <block_statement> ~while '(' <expression> ')' ';' ;] 
     [ ~switch '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;]
     [ ~for '(' <expression_statement> { [';' ,] <expression>  ';'} {[')' ,] <expression> ')' } <block_statement> ;]
-    [ ~foreach '(' <expression> ~in <expression> [ ':' <expression> ] ')' } <block_statement> ;]
+    [ ~foreach '(' <expression> ~in <expression> [ ':' <expression> ] ')' <block_statement> ;]
     <expression_statement> 
     ;
     
