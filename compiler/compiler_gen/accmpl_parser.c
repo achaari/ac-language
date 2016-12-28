@@ -8,6 +8,13 @@
 #define ac_error(a, ...)
 #endif
 
+FILE *tracefp = NULLP;
+#ifdef WIN32
+#define CMPL_INFO(msg, ...)  {if (tracefp) fprintf(tracefp, msg, __VA_ARGS__); printf(msg, __VA_ARGS__);}
+#else
+#define CMPL_INFO(...)  {if (tracefp) fprintf(tracefp, __VA_ARGS__); printf(msg, __VA_ARGS__);}
+#endif
+
 const char *rep = "D:\\ach projects\\accmplgen\\acdir\\";
 
 typedef enum {
@@ -31,7 +38,8 @@ typedef enum {
     DEF_STEP(GETIDENT),
     DEF_STEP(STRCODE),   
     DEF_STEP(MULTI_STRCODE),
-    DEF_STEP(SYMBOL)
+    DEF_STEP(SYMBOL),
+    DEF_STEP(MULTI_SYMBOL)
 } e_step_type_;
 
 typedef struct str_list_ {
@@ -405,7 +413,22 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
             return(step);
 
         case '%' :
-            if (check_char(inputp, '(')) {
+            if (peek(inputp) == '"') {
+                if (! get_string(inputp, &identp)) {
+                    ac_error(ERROR_EXPECTED, "string");
+                    return(NULLP);
+                }
+
+                step = ac_new_step(STEP_TYPE_MULTI_SYMBOL, rootp, curstepp);
+                if (!step) {
+                    ac_error(ERROR_MEMORY_ALLOC, "multicode");
+                    return(NULLP);
+                }
+
+                step->datap.codes = identp;
+                return(step);
+            }
+            else if (check_char(inputp, '(')) {
                 step = ac_new_step(STEP_TYPE_MULTI_STRCODE, rootp, curstepp);
                 if (!step) {
                     ac_error(ERROR_MEMORY_ALLOC, "multicode");
@@ -520,6 +543,8 @@ static int ac_proc(PTR inputp)
     procp = ac_add_proc(&proc, TRUE);
     if (!procp) return(FALSE);
 
+    CMPL_INFO("Processing '%s' Proc ...\n", procp->names);
+
     while (next(inputp)) {
         if (check_char(inputp, ';')) {
             break;
@@ -551,22 +576,164 @@ static int ac_gen(PTR inputp)
     return(TRUE);
 }
 
+#ifdef AC_TEST_GEN
+static void ac_print_step(FILE* outputp, pac_step_ step, e_step_type_ steptype, const char *prefix, int level)
+{
+    const char *__tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+    int tablidx = strlen(__tabs) - level;
+    e_step_type_ extl, exttype;
+
+    pac_step_ substep; 
+    pac_str_list_ strlistp;
+ 
+    if (steptype < 0) {
+        steptype = step->type;
+    }
+
+    switch (steptype) {
+        case STEP_TYPE_OPTSEQ:
+            ac_print_step(outputp, step->headp, -1, "IF_", level);
+            substep = step->childp;
+            while (substep) {
+                ac_print_step(outputp, substep, -1, "", level + 1);
+                substep = substep->nextp;
+            }
+            fprintf(outputp, "%sEND_IF\n", &__tabs[tablidx]);
+            break;
+
+        case STEP_TYPE_PROCSEQ:
+            fprintf(outputp, "%sINIT_PROCSEQ\n", &__tabs[tablidx], prefix);
+            substep = step->childp;
+            while (substep) {
+                ac_print_step(outputp, substep, -1, "", level + 1);
+                substep = substep->nextp;
+            }
+            fprintf(outputp, "%sEND_PROCSEQ\n", &__tabs[tablidx]);
+            break;
+
+        case STEP_TYPE_EXEC_PROC :
+            fprintf(outputp, "%s%sEXEC_PROC(%s) \n", &__tabs[tablidx], prefix, step->datap.idents);
+            break;
+
+        case STEP_TYPE_SYMBOL :
+            fprintf(outputp, "%s%sCHECK_SYMBOL('%c') \n", &__tabs[tablidx], prefix, step->datap.chr);
+            break;
+
+        case STEP_TYPE_MULTI_SYMBOL:
+            fprintf(outputp, "%s%sCHECK_ONE_SYMBOL(\"%s\") \n", &__tabs[tablidx], prefix, step->datap.codes);
+            break;
+
+        case STEP_TYPE_KEYWORD:
+            fprintf(outputp, "%s%sCHECK_KEYWORD(\"%s\") \n", &__tabs[tablidx], prefix, step->datap.idents);
+            break;
+
+        case STEP_TYPE_MULTI_KEYWORD:
+            fprintf(outputp, "%s%sCHECK_ONE_KEYWORD(\"%s\"", &__tabs[tablidx], prefix, step->datap.strlistp->codes);
+            strlistp = step->datap.strlistp->nextp;
+            while (strlistp) {
+                fprintf(outputp, " ,\"%s\"", strlistp->codes);
+                strlistp = strlistp->nextp;
+            }
+            fprintf(outputp, ")\n");
+            break;
+
+        case STEP_TYPE_STRCODE:
+            fprintf(outputp, "%s%sCHECK_TOKEN(\"%s\") \n", &__tabs[tablidx], prefix, step->datap.codes);
+            break;
+
+        case STEP_TYPE_MULTI_STRCODE:
+            fprintf(outputp, "%s%sCHECK_ONE_TOKEN(\"%s\"", &__tabs[tablidx], prefix, step->datap.strlistp->codes);
+            strlistp = step->datap.strlistp->nextp;
+            while (strlistp) {
+                fprintf(outputp, " ,\"%s\"", strlistp->codes);
+                strlistp = strlistp->nextp;
+            }
+            fprintf(outputp, ")\n");
+            break;
+
+        case STEP_TYPE_LITERAL:
+            fprintf(outputp, "%s%sCHECK_LITERAL \n", &__tabs[tablidx], prefix);
+            break;
+
+        case STEP_TYPE_GETIDENT:
+            fprintf(outputp, "%s%sGET_IDENT \n", &__tabs[tablidx], prefix);
+            break;
+
+        case STEP_TYPE_PROC_ACCEPT:
+            fprintf(outputp, "%s%sACCEPT_PROC \n", &__tabs[tablidx], prefix);
+            break;
+
+        default :
+            extl = (step->type - STEP_TYPE_EXEC_PROC) % 4;
+
+            if (extl) {
+                exttype = step->type - extl;
+                switch (extl+1) {
+                    case STEP_TYPE_PROC_ACCEPT:
+                        ac_print_step(outputp, step, exttype, "ACCEPT_PROC_IF_", level);
+                        break;
+                    case STEP_TYPE_PROCSEQ_BREAK:
+                        ac_print_step(outputp, step, exttype, "BREAK_PROCSEQ_IF_", level);
+                        break;
+                    case STEP_TYPE_PROCSEQ_RECALL:
+                        ac_print_step(outputp, step, exttype, "RECALL_PROCSEQ_IF_", level);
+                        break;
+                }
+            }
+            else {
+                fprintf(outputp, "%s%sSTEP : %d \n", &__tabs[tablidx], prefix, step->type);
+            }
+    }
+}
+
+static void ac_print_proc()
+{
+    pac_proc_ proc;
+    pac_step_ step;
+
+    FILE *outputp;
+    char filenames[256];
+
+    sprintf(filenames, "%s%s.c", rep, "acgen");
+    outputp = fopen(filenames, "w");
+
+    fprintf(outputp, "\n\n#include \"acdluti.h\"\n\n");
+
+    proc = proc_listp;
+    while (proc) {
+        fprintf(outputp, "DEF_PROC(%s) \n", proc->names);
+        step = proc->steplist;
+        while (step) {
+            ac_print_step(outputp, step, -1, "", 1);
+            step = step->nextp;
+        }
+        fprintf(outputp, "END_PROC\n\n");
+        proc = proc->nextp;
+    }
+
+    fclose(outputp);
+}
+#endif
 
 int main(int argc, char **argv)
 {
     PTR inputp;
-    FILE *outputp;
-    char filenames[256];
+    char filenames[256];    
     
+    sprintf(filenames, "%s%s.log", rep, "testac");
+    tracefp = fopen(filenames, "w");
+
     sprintf(filenames, "%s%s.ac", rep, "testac");
     inputp = opensource(filenames);
-
-    sprintf(filenames, "%s%s.c", rep, "testac");
-    outputp = fopen(filenames, "w");
-
-    ac_gen(inputp);    
+    
+    ac_gen(inputp);  
 
     closesource(&inputp);
-    fclose(outputp);
+
+#ifdef AC_TEST_GEN
+    ac_print_proc();
+#endif
+    
+    fclose(tracefp);
     return(TRUE);
 }
