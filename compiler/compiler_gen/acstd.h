@@ -35,18 +35,18 @@ typedef int (*PFI)();
 
 #ifndef __AC_MEM__
 #define __AC_MEM__
-#define mem_get(size)           calloc(size, 1)
-#define mem_free(ptr)           free(ptr); 
+#define mem_get(size)               calloc(size, 1)
+#define mem_free(ptr)               free(ptr); 
 #define mem_reset(ptr, size)        memset(ptr, '\0', size);
 #define mem_copy(src, desc, size)   memcpy(desc, src, size);
 #endif
 
 #ifndef iseqstr
-#define iseqstr(a,b)            (!strcmp(a,b))
+#define iseqstr(a,b)                (!strcmp(a,b))
 #endif
 
 #ifndef st_dup
-#define st_dup(a)           strdup(a)
+#define st_dup(a)                   strdup(a)
 #endif
 
 #endif
