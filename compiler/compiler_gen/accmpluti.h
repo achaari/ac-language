@@ -75,7 +75,7 @@ typedef struct cmplgen_ {
     pac_str_list_ token_listp;
 } ac_cmplgen_, *pac_cmplgen_;
 
-void ac_print_proc(pac_cmplgen_ proc_listp, FILE *outputp);
+void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp);
 
 void ac_print_compiler(pac_cmplgen_ proc_listp, FILE *outputp, int procount);
 
