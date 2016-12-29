@@ -2,11 +2,9 @@
 #include "acstd.h"
 #include "aclexer.h"
 
-#define MAX_LEN 100
+#include "accmpluti.h"
 
-#ifndef AC_MANAGE_ERROR
-#define ac_error(a, ...)
-#endif
+const char *rep = "D:\\ach projects\\accmplgen\\acdir\\";
 
 FILE *tracefp = NULLP;
 #ifdef WIN32
@@ -15,71 +13,18 @@ FILE *tracefp = NULLP;
 #define CMPL_INFO(...)  {if (tracefp) fprintf(tracefp, __VA_ARGS__); printf(msg, __VA_ARGS__);}
 #endif
 
-const char *rep = "D:\\ach projects\\accmplgen\\acdir\\";
-
-typedef enum {
-    PROC_TYPE_PROC = 0,
-    PROC_TYPE_MAIN
-} e_proc_type_;
-
-#define DEF_STEP(a) STEP_TYPE_##a, STEP_TYPE_ACCEPT_IF_##a,  STEP_TYPE_RECALL_IF_##a, STEP_TYPE_BREAK_IF_##a
-
-typedef enum {
-    STEP_TYPE_NAN = 0,
-    STEP_TYPE_PROCSEQ,
-    STEP_TYPE_PROC_ACCEPT,
-    STEP_TYPE_PROCSEQ_RECALL,
-    STEP_TYPE_PROCSEQ_BREAK,
-    STEP_TYPE_OPTSEQ,
-    DEF_STEP(EXEC_PROC),
-    DEF_STEP(LITERAL),
-    DEF_STEP(KEYWORD),
-    DEF_STEP(MULTI_KEYWORD),
-    DEF_STEP(GETIDENT),
-    DEF_STEP(STRCODE),   
-    DEF_STEP(MULTI_STRCODE),
-    DEF_STEP(SYMBOL),
-    DEF_STEP(MULTI_SYMBOL)
-} e_step_type_;
-
-typedef struct str_list_ {
-    char *codes;
-    struct str_list_ *nextp;
-} ac_str_list_, *pac_str_list_;
-
-typedef struct step_ {
-    e_step_type_ type;
-    union {
-        pac_str_list_ strlistp;
-        char idents[MAX_LEN];
-        char *codes;
-        char chr;
-    } datap;
-    struct step_ *rootp;
-    struct step_ *headp;
-    struct step_ *childp;
-    struct step_ *nextp;
-} ac_step_, *pac_step_;
-
-typedef struct proc_{
-    char         names[MAX_LEN];
-    e_proc_type_ type;
-    INT32        isdefb;
-    pac_step_    steplist;
-    struct proc_ *nextp;
-} ac_proc_, *pac_proc_;
-
-static pac_proc_ proc_listp = NULLP;
+static ac_cmplgen_ cmplgen;
 
 static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp);
 
+static int proc_index = 0;
 
 static pac_proc_ ac_add_proc(pac_proc_ inproc, int isdecb)
 {
-    pac_proc_ curprocp = proc_listp;
+    pac_proc_ curprocp = cmplgen.proc_listp;
 
     if (! curprocp) {
-        proc_listp = curprocp = mem_get(sizeof(ac_proc_));
+        cmplgen.proc_listp = curprocp = mem_get(sizeof(ac_proc_));
     }
     else {
         /* vérifier si on a déja la même proc */
@@ -112,8 +57,33 @@ static pac_proc_ ac_add_proc(pac_proc_ inproc, int isdecb)
 
     mem_copy(inproc, curprocp, sizeof(ac_proc_));
     curprocp->isdefb = isdecb;
-
+    if (curprocp->type != PROC_TYPE_MAIN) {
+        curprocp->index = ++proc_index;
+    }
     return(curprocp);
+}
+
+static pac_proc_ ac_get_proc(pac_proc_ proclistp, char *names)
+{
+    pac_proc_ curprocp = proclistp;
+
+    while (curprocp) {
+        if (iseqstr(curprocp->names, names)) {
+            return(curprocp);
+        }
+
+        curprocp = curprocp->nextp;
+    }
+
+#ifndef AC_PROC_DATA
+    ac_proc_ curproc;
+    ac_warning(ERROR_UNDEFINED_PROC, names);
+    mem_reset(&curproc, sizeof(ac_proc_));
+    strcpy(curproc.names, names);
+    return(ac_add_proc(&curproc, FALSE));
+#else
+    return(NULLP);
+#endif    
 }
 
 static pac_step_ ac_new_step(e_step_type_ type, pac_step_ rootp, pac_step_ *curstepp)
@@ -257,8 +227,140 @@ static int ac_add_strlist(char *str, pac_str_list_ *firstp, pac_str_list_ *curre
     return(TRUE);
 }
 
+static char *ac_get_keyword(PTR inputp, char *keyword)
+{
+    char *identp;
+    pac_str_list_ curkeyp, keyp = cmplgen.keyword_listp;
+
+    if (!(identp = get_ident(inputp))) {
+        ac_error(ERROR_EXPECTED, "identifier");
+        return(NULLP);
+    }
+
+    if (keyword) {
+        strcpy(keyword, identp);
+    }
+
+    /* Add to keyword list */
+    curkeyp = mem_get(sizeof(ac_str_list_));
+        
+    if (!curkeyp) {
+        mem_free(identp);
+        ac_error(ERROR_MEMORY_ALLOC, "keyword"); 
+        return(NULLP);
+    }
+    
+    curkeyp->codes = identp;
+
+    if (!cmplgen.keyword_listp || strcmp(cmplgen.keyword_listp->codes, identp) < 0) {
+        curkeyp->nextp = cmplgen.keyword_listp;
+        cmplgen.keyword_listp = curkeyp;
+        return(identp);
+    }
+
+    while (keyp) {
+        if (! strcmp(keyp->codes, identp)) {
+            mem_free(identp);
+            mem_free(curkeyp);
+            return(keyp->codes);
+        }
+        else if (keyp->nextp && strcmp(keyp->nextp->codes, identp) < 0) {
+            curkeyp->nextp = keyp->nextp;
+            keyp->nextp = curkeyp;
+            return(identp);
+        }
+        else if (keyp->nextp == NULLP) {
+            break;
+        }
+
+        keyp = keyp->nextp;
+    }
+
+    if (keyp) {
+        keyp->nextp = curkeyp;
+    }
+
+    return(identp);
+}
+
+static char *ac_add_token(char *token)
+{
+    pac_str_list_ curkeyp, keyp = cmplgen.token_listp;
+
+    /* Add to token list */
+    curkeyp = mem_get(sizeof(ac_str_list_));
+
+    if (!curkeyp) {
+        mem_free(token);
+        ac_error(ERROR_MEMORY_ALLOC, "token");
+        return(NULLP);
+    }
+
+    curkeyp->codes = token;
+
+    if (!cmplgen.token_listp || strcmp(cmplgen.token_listp->codes, token) < 0) {
+        curkeyp->nextp = cmplgen.token_listp;
+        cmplgen.token_listp = curkeyp;
+        return(token);
+    }
+
+    while (keyp) {
+        if (!strcmp(keyp->codes, token)) {
+            mem_free(token);
+            mem_free(curkeyp);
+            return(keyp->codes);
+        }
+        else if (keyp->nextp && strcmp(keyp->nextp->codes, token) < 0) {
+            curkeyp->nextp = keyp->nextp;
+            keyp->nextp = curkeyp;
+            return(token);
+        }
+        else if (keyp->nextp == NULLP) {
+            break;
+        }
+
+        keyp = keyp->nextp;
+    }
+
+    if (keyp) {
+        keyp->nextp = curkeyp;
+    }
+
+    return(token);
+}
+
+static char *ac_get_token(PTR inputp)
+{
+    char *identp;
+
+    if (! get_string(inputp, &identp)) {
+        ac_error(ERROR_EXPECTED, "string");
+        return(NULLP);
+    }
+
+    return(ac_add_token(identp));
+}
+
+static int ac_add_symbol(char symbolc)
+{
+    char *identp = mem_get(2);
+    identp[0] = symbolc;
+    return(ac_add_token(identp) != NULLP);
+}
+
+static int ac_add_symbol_list(char *symbols)
+{
+    for (unsigned int i = 0; i < strlen(symbols); i++) {
+        if (! ac_add_symbol(symbols[i]))
+            return(FALSE);
+    }
+
+    return(TRUE);
+}
+
 static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 {
+    pac_proc_ tmptrpc;
     pac_step_ step;
     pac_str_list_ strlistp;
     char idents[MAX_LEN], *identp;
@@ -322,7 +424,10 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_error(ERROR_INVALID_SYMBOL);
                 return(NULLP);
             }
-
+            else if (! ac_add_symbol(chr)) {
+                return(NULLP);
+            }
+            
             step = ac_new_step(STEP_TYPE_SYMBOL, rootp, curstepp);
             if (!step) {
                 ac_error(ERROR_MEMORY_ALLOC, "symbol");
@@ -338,7 +443,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_error(ERROR_MEMORY_ALLOC, "strcode");
                 return(NULLP);
             }
-            if (!get_string(inputp, &step->datap.codes)) {
+            if (!(step->datap.codes = ac_get_token(inputp))) {
                 ac_error(ERROR_EXPECTED, "string");
                 ac_free_step(&step);
                 return(NULLP);
@@ -355,13 +460,19 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 return(NULLP);
             }
 
+            tmptrpc = ac_get_proc(cmplgen.proc_listp, idents);
+            if (!tmptrpc) {
+                ac_error(ERROR_UNDEFINED_PROC, idents);
+                return(NULLP);
+            }
+
             step = ac_new_step(STEP_TYPE_EXEC_PROC, rootp, curstepp);
             if (!step) {
                 ac_error(ERROR_MEMORY_ALLOC, "execproc");
                 return(NULLP);
             }
 
-            strcpy(step->datap.idents, idents); /* ToDo validate proc Name */
+            step->datap.procp = tmptrpc;
             return(step);
 
         case '~' :
@@ -375,7 +486,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 strlistp = NULLP;
 
                 while (next(inputp)) {
-                    if (!(identp = get_ident(inputp))) {                    
+                    if (!(identp = ac_get_keyword(inputp, NULLP))) {
                         ac_error(ERROR_EXPECTED, "identifier");
                         return(NULLP);
                     }
@@ -397,18 +508,17 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 }
             }
             else {
-                if (! get_identstr(inputp, idents)) {
-                    ac_error(ERROR_EXPECTED, "identifier");
-                    return(NULLP);
-                }
-
                 step = ac_new_step(STEP_TYPE_KEYWORD, rootp, curstepp);
                 if (!step) {
                     ac_error(ERROR_MEMORY_ALLOC, "keyword");
                     return(NULLP);
                 }
 
-                strcpy(step->datap.idents, idents);             
+                if (!ac_get_keyword(inputp, step->datap.idents)) {
+                    ac_error(ERROR_EXPECTED, "identifier");
+                    ac_free_step(&step); 
+                    return(NULLP);
+                }           
             }
             return(step);
 
@@ -416,6 +526,9 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
             if (peek(inputp) == '"') {
                 if (! get_string(inputp, &identp)) {
                     ac_error(ERROR_EXPECTED, "string");
+                    return(NULLP);
+                }
+                else if (!ac_add_symbol_list(identp)) {
                     return(NULLP);
                 }
 
@@ -438,12 +551,14 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 strlistp = NULLP;
 
                 while (next(inputp)) {
-                    if (!get_string(inputp, &identp)) {
+                    if (!(identp = ac_get_token(inputp))) {
                         ac_error(ERROR_EXPECTED, "string");
+                        ac_free_step(&step); 
                         return(NULLP);
                     }
                     else if (!ac_add_strlist(identp, &step->datap.strlistp, &strlistp)) {
                         ac_error(ERROR_MEMORY_ALLOC, "multicode");
+                        ac_free_step(&step); 
                         return(NULLP);
                     }
 
@@ -455,11 +570,13 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                     }
                     else {
                         ac_error(ERROR_EXPECTED, "char", ')');
+                        ac_free_step(&step); 
                         return(NULLP);
                     }
                 }
             }
             else {
+                ac_error(ERROR_EXPECTED, "char", '(');
                 return(NULLP);
             }
 
@@ -559,7 +676,8 @@ static int ac_proc(PTR inputp)
 
 static int ac_gen(PTR inputp)
 {
-    INT32 tmpl = FALSE;     
+    int tmpl = FALSE; 
+    char *ident;
     
     while (next(inputp)) {
 
@@ -570,170 +688,57 @@ static int ac_gen(PTR inputp)
                     return(FALSE);
                 }
                 break;
+
+            case '%' :
+                consume(inputp);
+                ident = get_ident(inputp);
+                if (!ident) {
+                    ac_error(ERROR_EXPECTED, "identifier");
+                    return(FALSE);
+                }
+
+                if (iseqstr(ident, "module_name")) {
+                    cmplgen.module_name = ident;
+                }
+                else {
+                    ac_warning(ERROR_UNEXPECTED, "ident", ident);
+                    mem_free(ident);
+                }
+                break;
         }
     }
 
     return(TRUE);
 }
 
-#ifdef AC_TEST_GEN
-static void ac_print_step(FILE* outputp, pac_step_ step, e_step_type_ steptype, const char *prefix, int level)
-{
-    const char *__tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
-    int tablidx = strlen(__tabs) - level;
-    e_step_type_ extl, exttype;
-
-    pac_step_ substep; 
-    pac_str_list_ strlistp;
- 
-    if (steptype < 0) {
-        steptype = step->type;
-    }
-
-    switch (steptype) {
-        case STEP_TYPE_OPTSEQ:
-            ac_print_step(outputp, step->headp, -1, "IF_", level);
-            substep = step->childp;
-            while (substep) {
-                ac_print_step(outputp, substep, -1, "", level + 1);
-                substep = substep->nextp;
-            }
-            fprintf(outputp, "%sEND_IF\n", &__tabs[tablidx]);
-            break;
-
-        case STEP_TYPE_PROCSEQ:
-            fprintf(outputp, "%sINIT_PROCSEQ\n", &__tabs[tablidx], prefix);
-            substep = step->childp;
-            while (substep) {
-                ac_print_step(outputp, substep, -1, "", level + 1);
-                substep = substep->nextp;
-            }
-            fprintf(outputp, "%sEND_PROCSEQ\n", &__tabs[tablidx]);
-            break;
-
-        case STEP_TYPE_EXEC_PROC :
-            fprintf(outputp, "%s%sEXEC_PROC(%s) \n", &__tabs[tablidx], prefix, step->datap.idents);
-            break;
-
-        case STEP_TYPE_SYMBOL :
-            fprintf(outputp, "%s%sCHECK_SYMBOL('%c') \n", &__tabs[tablidx], prefix, step->datap.chr);
-            break;
-
-        case STEP_TYPE_MULTI_SYMBOL:
-            fprintf(outputp, "%s%sCHECK_ONE_SYMBOL(\"%s\") \n", &__tabs[tablidx], prefix, step->datap.codes);
-            break;
-
-        case STEP_TYPE_KEYWORD:
-            fprintf(outputp, "%s%sCHECK_KEYWORD(\"%s\") \n", &__tabs[tablidx], prefix, step->datap.idents);
-            break;
-
-        case STEP_TYPE_MULTI_KEYWORD:
-            fprintf(outputp, "%s%sCHECK_ONE_KEYWORD(\"%s\"", &__tabs[tablidx], prefix, step->datap.strlistp->codes);
-            strlistp = step->datap.strlistp->nextp;
-            while (strlistp) {
-                fprintf(outputp, " ,\"%s\"", strlistp->codes);
-                strlistp = strlistp->nextp;
-            }
-            fprintf(outputp, ")\n");
-            break;
-
-        case STEP_TYPE_STRCODE:
-            fprintf(outputp, "%s%sCHECK_TOKEN(\"%s\") \n", &__tabs[tablidx], prefix, step->datap.codes);
-            break;
-
-        case STEP_TYPE_MULTI_STRCODE:
-            fprintf(outputp, "%s%sCHECK_ONE_TOKEN(\"%s\"", &__tabs[tablidx], prefix, step->datap.strlistp->codes);
-            strlistp = step->datap.strlistp->nextp;
-            while (strlistp) {
-                fprintf(outputp, " ,\"%s\"", strlistp->codes);
-                strlistp = strlistp->nextp;
-            }
-            fprintf(outputp, ")\n");
-            break;
-
-        case STEP_TYPE_LITERAL:
-            fprintf(outputp, "%s%sCHECK_LITERAL \n", &__tabs[tablidx], prefix);
-            break;
-
-        case STEP_TYPE_GETIDENT:
-            fprintf(outputp, "%s%sGET_IDENT \n", &__tabs[tablidx], prefix);
-            break;
-
-        case STEP_TYPE_PROC_ACCEPT:
-            fprintf(outputp, "%s%sACCEPT_PROC \n", &__tabs[tablidx], prefix);
-            break;
-
-        default :
-            extl = (step->type - STEP_TYPE_EXEC_PROC) % 4;
-
-            if (extl) {
-                exttype = step->type - extl;
-                switch (extl+1) {
-                    case STEP_TYPE_PROC_ACCEPT:
-                        ac_print_step(outputp, step, exttype, "ACCEPT_PROC_IF_", level);
-                        break;
-                    case STEP_TYPE_PROCSEQ_BREAK:
-                        ac_print_step(outputp, step, exttype, "BREAK_PROCSEQ_IF_", level);
-                        break;
-                    case STEP_TYPE_PROCSEQ_RECALL:
-                        ac_print_step(outputp, step, exttype, "RECALL_PROCSEQ_IF_", level);
-                        break;
-                }
-            }
-            else {
-                fprintf(outputp, "%s%sSTEP : %d \n", &__tabs[tablidx], prefix, step->type);
-            }
-    }
-}
-
-static void ac_print_proc()
-{
-    pac_proc_ proc;
-    pac_step_ step;
-
-    FILE *outputp;
-    char filenames[256];
-
-    sprintf(filenames, "%s%s.c", rep, "acgen");
-    outputp = fopen(filenames, "w");
-
-    fprintf(outputp, "\n\n#include \"acdluti.h\"\n\n");
-
-    proc = proc_listp;
-    while (proc) {
-        fprintf(outputp, "DEF_PROC(%s) \n", proc->names);
-        step = proc->steplist;
-        while (step) {
-            ac_print_step(outputp, step, -1, "", 1);
-            step = step->nextp;
-        }
-        fprintf(outputp, "END_PROC\n\n");
-        proc = proc->nextp;
-    }
-
-    fclose(outputp);
-}
-#endif
-
 int main(int argc, char **argv)
 {
     PTR inputp;
-    char filenames[256];    
+    char filenames[256]; 
+    FILE *outputp;
+    int cmplok;
+
+    /* init cmplgen */
+    mem_reset(&cmplgen, sizeof(ac_cmplgen_));
     
     sprintf(filenames, "%s%s.log", rep, "testac");
     tracefp = fopen(filenames, "w");
 
     sprintf(filenames, "%s%s.ac", rep, "testac");
     inputp = opensource(filenames);
+
+    sprintf(filenames, "%s%s.c", rep, "acgen");
+    outputp = fopen(filenames, "w");
     
-    ac_gen(inputp);  
+    cmplok = ac_gen(inputp);
 
     closesource(&inputp);
 
-#ifdef AC_TEST_GEN
-    ac_print_proc();
-#endif
+    if (cmplok) {
+        ac_print_compiler(&cmplgen, outputp, proc_index);
+    }
     
+    fclose(outputp);
     fclose(tracefp);
-    return(TRUE);
+    return(cmplok);
 }
