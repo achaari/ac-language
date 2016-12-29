@@ -7,9 +7,9 @@
 typedef enum {
     STEP_EXT_NA = 0,
     STEP_EXT_OPTSTEP,
-    STEP_DEF_ACCEPT_IF,
-    STEP_DEF_RECALL_IF,
-    STEP_DEF_BREAK_IF
+    STEP_EXT_ACCEPT_IF,
+    STEP_EXT_RECALL_IF,
+    STEP_EXT_BREAK_IF
 } e_step_ext_;
 
 typedef enum {
