@@ -4,6 +4,7 @@
 .statement_block;
 .variable_declaration;
 .function_definition;
+.block_statement;
 .expression;
 
 /* Type definition, exmpl : Object, Package::Object, NameSpace::Package::Object */
@@ -48,7 +49,7 @@
     [ ~as <type_name> ]    
     
     /* affectation operator */
-    [ %("=", "+=", "-=", "*=", "/=", "&=", "|=") <expression> ] 
+    [ %("=", "+=", "-=", "*=", "/=", "&=", "|=", "<<=", ">>=") <expression> ] 
     
     /* arithmetic or logic operator */
     [ %("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<", "!=", "+", "-", "*", "/", "^") <expression> ] 
