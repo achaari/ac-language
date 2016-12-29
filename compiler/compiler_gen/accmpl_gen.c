@@ -112,6 +112,7 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
                 tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, strlistp->codes);
                 strlistp = strlistp->nextp;
             }
+            tab[endpos] = count;
             break;
 
         case STEP_TYPE_STRCODE:
@@ -129,6 +130,7 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
                 tab[(*index)++] = ac_get_str_index(cmplgenp->token_listp, strlistp->codes);
                 strlistp = strlistp->nextp;
             }
+            tab[endpos] = count;
             break;
 
         case STEP_TYPE_SYMBOL:
@@ -210,7 +212,7 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
 
     proc = cmplgenp->proc_listp;
     while (proc) {
-        proc->initpos = index;
+        proc->initpos = index++;
 
         /* Proc position */
         _tab[proc->index] = proc->initpos;
@@ -227,7 +229,10 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
         proc = proc->nextp;
     }
 
+#ifdef AC_GEN_DEBUG
     fprintf(outputp, "\n\n#ifndef AC_DEBUG\n");
+#endif
+
     fprintf(outputp, "static const int __prcex[] = {\n    ");
     for (idx = 0; idx < index; idx++) {
         fprintf(outputp, " %5d%s", _tab[idx], (idx == index - 1) ? " };\n" : ",");
@@ -235,7 +240,12 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
             fprintf(outputp, "\n    ");
         }
     }
+
+#ifdef AC_GEN_DEBUG
+    fprintf(outputp, "\n#else\n");
+    ac_print_proc(cmplgenp, _tab, outputp);
     fprintf(outputp, "#endif\n");
+#endif
 
     fprintf(outputp, "\n\n/*********** MAIN COMPILER FUNCTION ***********/\n");
     fprintf(outputp, "int __accmpl_exec_%s()\n{\n", (cmplgenp->module_name) ? cmplgenp->module_name : "module");
@@ -244,8 +254,19 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
         fprintf(outputp, "\n    __ac_compl_set_keyword(cmplhndp, __keywords, sizeof(__keywords)/sizeof(char*));\n");
     }
 
+#ifdef AC_GEN_DEBUG
+    fprintf(outputp, "\n\n#ifndef AC_DEBUG");
+#endif
+
     fprintf(outputp, "\n    __ac_compl_exec(cmplhndp, __prcex, sizeof(__prcex)/sizeof(int));\n");
 
+#ifdef AC_GEN_DEBUG
+    fprintf(outputp, "\n#else");
+    fprintf(outputp, "\n    EXEC_PROC(main);\n");
+    fprintf(outputp, "#endif\n");
+#endif
+
+    fprintf(outputp, "\n    return(__ac_exit_compiler(&cmplhndp));\n");
     fprintf(outputp, "}\n");
 
     fclose(outputp);
