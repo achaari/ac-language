@@ -178,7 +178,16 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
     
     mem_reset(_tab, sizeof(_tab));
 
-    fprintf(outputp, "\n\n#include \"accmpl.h\"\n\n");
+    //fprintf(outputp, "\n\n#include \"accmplpub.h\"\n\n");
+
+    fprintf(outputp, "typedef void *p_accmpl_;\n");
+    fprintf(outputp, "typedef void *p_accmpl_proc_;\n");
+
+    fprintf(outputp, "typedef int (*__exec)(p_accmpl_ cmplhndp);\n\n");
+
+    fprintf(outputp, "extern int __ac_init_proc(p_accmpl_ cmplhndp, __exec prcfctp, const char *procname);\n");
+    fprintf(outputp, "extern int __ac_compl_set_keywords(p_accmpl_ cmplhndp, char **keywords, int count);\n");
+    fprintf(outputp, "extern int __ac_compl_set_tokens(p_accmpl_ cmplhndp, char **tokens, int count);\n\n\n");
 
     if (cmplgenp->keyword_listp) {
         idx = 0;
@@ -243,15 +252,30 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
 
 #ifdef AC_GEN_DEBUG
     fprintf(outputp, "\n#else\n");
+    //fprintf(outputp, "\n#include \"accmpldebug.h\"\n\n");
+    
+    fprintf(outputp, "extern int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp);\n");
+    fprintf(outputp, "extern int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, int step, ...);\n");
+    fprintf(outputp, "extern int __ac_end_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp);\n");
+    fprintf(outputp, "extern int __ac_stop_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp);\n\n");
+
+    fprintf(outputp, "#define __ac_proc_step(stat, mand) __ac_process_step(cmplhndp, mandb, AC_CMPL_STAT_##stat)\n");
+    fprintf(outputp, "#define __ac_check_step(stat)      __ac_proc_step(stat, FALSE)\n");
+    fprintf(outputp, "#define __ac_exec_step(stat)       if(! __ac_proc_step(stat, TRUE)) { return(__ac_stop_proc(cmplhndp, &proc)); }\n");
+    fprintf(outputp, "#define __ac_try_step(stat)        __ac_proc_step(stat, FALSE);\n\n");
+
     ac_print_proc(cmplgenp, _tab, outputp);
     fprintf(outputp, "#endif\n");
 #endif
 
-    fprintf(outputp, "\n\n/*********** MAIN COMPILER FUNCTION ***********/\n");
+    fprintf(outputp, "\n/*********** MAIN COMPILER FUNCTION ***********/\n");
     fprintf(outputp, "int __accmpl_exec_%s()\n{\n", (cmplgenp->module_name) ? cmplgenp->module_name : "module");
     fprintf(outputp, "    p_accmpl_ cmplhndp = __ac_new_compiler();\n");
     if (cmplgenp->keyword_listp) {
-        fprintf(outputp, "\n    __ac_compl_set_keyword(cmplhndp, __keywords, sizeof(__keywords)/sizeof(char*));\n");
+        fprintf(outputp, "\n    __ac_compl_set_keywords(cmplhndp, __keywords, sizeof(__keywords)/sizeof(char*));");
+    }
+    if (cmplgenp->token_listp) {
+        fprintf(outputp, "\n    __ac_compl_set_tokens(cmplhndp, __tokens, sizeof(__tokens)/sizeof(char*));\n");
     }
 
 #ifdef AC_GEN_DEBUG
@@ -261,8 +285,8 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
     fprintf(outputp, "\n    __ac_compl_exec(cmplhndp, __prcex, sizeof(__prcex)/sizeof(int));\n");
 
 #ifdef AC_GEN_DEBUG
-    fprintf(outputp, "\n#else");
-    fprintf(outputp, "\n    EXEC_PROC(main);\n");
+    fprintf(outputp, "#else");
+    fprintf(outputp, "\n    __ac_compl_exec_mainproc(cmplhndp, __exec_main);\n");
     fprintf(outputp, "#endif\n");
 #endif
 
