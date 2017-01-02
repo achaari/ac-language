@@ -60,11 +60,11 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         case STEP_DEF_PROCSEQ_RECALL:
-            fprintf(outputp, "%s%RECALL_PROCSEQ%s \n", &__tabs[tablidx], prefixs[stat], postfixs[stat]); // __ac_check_stat(RECALL, continue)
+            fprintf(outputp, "%scontinue;\n", &__tabs[tablidx]); 
             break;
 
         case STEP_DEF_PROCSEQ_BREAK:
-            fprintf(outputp, "%s%RECALL_BREAK%s \n", &__tabs[tablidx], prefixs[stat], postfixs[stat]);  // __ac_check_stat(BREAK, break)
+            fprintf(outputp, "%sbreak;\n", &__tabs[tablidx]);  
             break;
 
         case STEP_DEF_EXECPROC:
