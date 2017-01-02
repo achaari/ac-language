@@ -677,7 +677,8 @@ static int ac_proc(PTR inputp)
 static int ac_gen(PTR inputp)
 {
     int tmpl = FALSE; 
-    char *ident;
+    char *tmps, idents[MAX_LEN];
+    pac_str_list_ curheader = NULLP;
     
     while (next(inputp)) {
 
@@ -691,18 +692,36 @@ static int ac_gen(PTR inputp)
 
             case '%' :
                 consume(inputp);
-                ident = get_ident(inputp);
-                if (!ident) {
+                if (! get_identstr(inputp, idents)) {
                     ac_error(ERROR_EXPECTED, "identifier");
                     return(FALSE);
                 }
 
-                if (iseqstr(ident, "module_name")) {
-                    cmplgen.module_name = ident;
+                if (iseqstr(idents, "module_name")) {
+                    cmplgen.module_name = get_ident(inputp);
+                    if (!cmplgen.module_name) {
+                        ac_error(ERROR_EXPECTED, "module_name");
+                        return(FALSE);
+                    }
+                }
+                else if (iseqstr(idents, "include")) {
+                    while (TRUE) {
+                        if (!get_string(inputp, &tmps)) {
+                            ac_error(ERROR_EXPECTED, "header_file");
+                            return(FALSE);
+                        }
+                        else if (!ac_add_strlist(tmps, &cmplgen.headers, &curheader)) {
+                            ac_error(ERROR_MEMORY_ALLOC, "header_file");
+                            return(FALSE);
+                        }
+
+                        if (!check_char(inputp, ',')) {
+                            break;
+                        }
+                    }
                 }
                 else {
                     ac_warning(ERROR_UNEXPECTED, "ident", ident);
-                    mem_free(ident);
                 }
                 break;
         }
