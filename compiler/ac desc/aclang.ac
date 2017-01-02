@@ -62,9 +62,12 @@
     [ '?' <expression> ':' <expression> ]
     ;
 
+/* label defition (goto) */
+.label_definition : ident ':' ;
+
 .expression_statement : 
     [ ';' ; ]                    /* No opration statement */
-    [ ':' ident ;]               /* label defition (goto) */
+    [ <label_definition>  ;]              
     [ ~(break,continue) ';' ;]   
     [ ~goto ident ';' ;]
     [ ~return [<expression>] ';' ;]
