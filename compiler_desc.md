@@ -12,9 +12,11 @@ Or complex :
 Note that :
 -	Conditional step could not be Steps sequence or Optional sequence.
 -	When conditional step is a procedure call,  the compiler will try to match the whole procedure, but no error will be raised if the procedure fail.
+-	Steps Sequence fail if one of its steps fail
+-	Optional sequence fail if one of its steps (except conditional step) fail
 
-Some specific steps could be used in a steps sequence : 
--	break step defined as “,” : to interrupt the steps sequence and accept is
+Some specific step could be used in a steps sequence : 
+-	break step defined as “,” : to interrupt the steps sequence and accept it
 -	recall step defined as “*” : to recall the steps sequence from the beginning 
 
 Also, in a steps sequence or optional sequence, we could force the current procedure acceptation by using the accept step defined as “;”
