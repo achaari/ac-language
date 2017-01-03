@@ -95,7 +95,13 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
         case STEP_TYPE_EXEC_PROC:
             tab[(*index)++] = STEP_DEF_EXECPROC + stepext;
             tab[(*index)++] = step->datap.procp->index;
-            break;      
+            break; 
+
+        case STEP_TYPE_EXEC_KEYWORD:
+            tab[(*index)++] = STEP_DEF_EXECKEYWORD + stepext;
+            tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, step->datap.procp->names);
+            tab[(*index)++] = step->datap.procp->index;
+            break;
 
         case STEP_TYPE_KEYWORD:
             tab[(*index)++] = STEP_DEF_KEYWORD + stepext;
