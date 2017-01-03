@@ -1,4 +1,4 @@
-//.include "acdluti.h" 
+%include "acdluti.h" 
 
 /* CmplProc prototypes */
 .statement_block;
@@ -75,9 +75,11 @@
     <expression> ';' 
     ;
 
+.keyword if : '(' <expression> ')' <block_statement> [~else <block_statement> ] ;
+
 .block_statement : 
     [ <statement_block> ;]
-    [ ~if '(' <expression> ')' <block_statement> [~else <block_statement> ] ;] 
+    [ ^if ;] 
     [ ~while '(' <expression> ')' <block_statement> ;]
     [ ~do <block_statement> ~while '(' <expression> ')' ';' ;] 
     [ ~switch '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;]
