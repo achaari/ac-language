@@ -19,11 +19,11 @@ Some specific step could be used in a steps sequence :
 
 Also, in a steps sequence or optional sequence, we could force the current procedure acceptation by using the accept step defined as “;”
 
-For example “if” statement could be defined as : “.if_statement : ~if <expression> <code_block> [~else <code_statement>]”
+For example “if” statement could be defined as : “.if_statement : ~if < expression > < code_block > [~else < code_statement >]”
 
 As an alternative (recommended in some cases) we can define the “if” statement as keyword procedure as following 
 
-“.keyword if : <expression> <code_block> [~else <code_statement>]” 
+“.keyword if : < expression > < code_block > [~else < code_statement >]” 
 
 and to call this procedure just use “^if”.
 
