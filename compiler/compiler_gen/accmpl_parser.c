@@ -465,10 +465,39 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_error(ERROR_UNDEFINED_PROC, idents);
                 return(NULLP);
             }
+            else if (tmptrpc->type != PROC_TYPE_PROC){
+                ac_error(ERROR_UNEXPECTED_PROC, idents);
+                return(NULLP);
+            }
 
             step = ac_new_step(STEP_TYPE_EXEC_PROC, rootp, curstepp);
             if (!step) {
                 ac_error(ERROR_MEMORY_ALLOC, "execproc");
+                return(NULLP);
+            }
+
+            step->datap.procp = tmptrpc;
+            return(step);
+
+        case '^':
+            if (! ac_get_keyword(inputp, idents)) {
+                ac_error(ERROR_EXPECTED, "identifier");
+                return(NULLP);
+            }
+            
+            tmptrpc = ac_get_proc(cmplgen.proc_listp, idents);
+            if (!tmptrpc) {
+                ac_error(ERROR_UNDEFINED_PROC, idents);
+                return(NULLP);
+            }
+            else if (tmptrpc->type != PROC_TYPE_KEYWORD){
+                ac_error(ERROR_UNEXPECTED_PROC, idents);
+                return(NULLP);
+            }
+
+            step = ac_new_step(STEP_TYPE_EXEC_KEYWORD, rootp, curstepp);
+            if (!step) {
+                ac_error(ERROR_MEMORY_ALLOC, "execkeyword");
                 return(NULLP);
             }
 
@@ -642,6 +671,9 @@ static int ac_proc(PTR inputp)
 
     if (iseqstr(proc.names, "main")) {
         proc.type = PROC_TYPE_MAIN;
+    }
+    else if (iseqstr(proc.names, "keyword")) {
+        proc.type = PROC_TYPE_KEYWORD;
     }
 
     if (proc.type > PROC_TYPE_MAIN && !get_identstr(inputp, proc.names)) {
