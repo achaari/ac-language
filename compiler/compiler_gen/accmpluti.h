@@ -50,7 +50,6 @@ typedef struct step_ {
     union {
     struct proc_  *procp;
         pac_str_list_ strlistp;
-        char idents[MAX_LEN];
         char *codes;
         char chr;
     } datap;
@@ -63,15 +62,16 @@ typedef struct step_ {
 typedef struct proc_{
     char         names[MAX_LEN];
     e_proc_type_ type;
-    int      index;
-    int      initpos;
-    int      isdefb;
+    int          index;
+    int          initpos;
+    int          isdefb;
+    int          inuseb;
     pac_step_    steplist;
     struct proc_ *nextp;
 } ac_proc_, *pac_proc_;
 
 typedef struct cmplgen_ {
-    char      *module_name;
+    char          *module_name;
     pac_proc_     proc_listp;
     pac_str_list_ keyword_listp;
     pac_str_list_ token_listp;
