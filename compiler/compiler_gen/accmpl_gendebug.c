@@ -69,7 +69,16 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
 
         case STEP_DEF_EXECPROC:
             fprintf(outputp, "%s%s%s(EXECPROC(__exec_%s))%s \n", &__tabs[tablidx], prefixs[stat], stats[stat], ac_get_proc(cmplgenp->proc_listp, pxtab[(*indx)++]), postfixs[stat]);
-            break;      
+            break;   
+
+        case STEP_DEF_EXECKEYWORD:
+            fprintf(outputp, "%s%s%s(EXECKEYWORD(\"%s\",__exec_keyword_%s))%s \n", 
+                    &__tabs[tablidx], prefixs[stat], stats[stat], 
+                    ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)]), 
+                    ac_get_proc(cmplgenp->proc_listp, pxtab[(*indx)+1]), 
+                    postfixs[stat]);
+	    (*indx) += 2;
+            break;
 
         case STEP_DEF_LITERAL:
             fprintf(outputp, "%s%s%s(LITERAL)%s \n", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
@@ -186,7 +195,7 @@ void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp)
     fprintf(outputp, "\n/************* AC-PROCs PROTOTYPE *************/\n");
     proc = cmplgenp->proc_listp;
     while (proc) {
-        fprintf(outputp, "static int __exec_%s(p_accmpl_ cmplhndp);\n", proc->names, proc->names, proc->names);
+	fprintf(outputp, "static int __exec_%s%s(p_accmpl_ cmplhndp);\n", (proc->type == PROC_TYPE_KEYWORD) ? "keyword_" : "", proc->names, proc->names, proc->names);
         proc = proc->nextp;
     }
 
@@ -194,7 +203,8 @@ void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp)
     proc = cmplgenp->proc_listp;
     while (proc) {
 
-        fprintf(outputp, "\nstatic int __exec_%s(p_accmpl_ cmplhndp)\n{\n    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_%s, \"%s\");\n\n", proc->names, proc->names, proc->names);
+        fprintf(outputp, "\nstatic int __exec_%s%s(p_accmpl_ cmplhndp)\n{\n    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_%s, \"%s\");\n\n", 
+                (proc->type == PROC_TYPE_KEYWORD) ? "keyword_" : "", proc->names, proc->names, proc->names);
         idx = proc->initpos+1;
         while (idx <= pxtab[proc->initpos]) {
             ac_print_step(cmplgenp, pxtab[idx++], pxtab, &idx, 1, 0, outputp);
