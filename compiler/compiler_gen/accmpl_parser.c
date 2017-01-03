@@ -476,6 +476,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 return(NULLP);
             }
 
+            tmptrpc->inuseb = TRUE;
             step->datap.procp = tmptrpc;
             return(step);
 
@@ -500,7 +501,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_error(ERROR_MEMORY_ALLOC, "execkeyword");
                 return(NULLP);
             }
-
+            tmptrpc->inuseb = TRUE;
             step->datap.procp = tmptrpc;
             return(step);
 
@@ -543,7 +544,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                     return(NULLP);
                 }
 
-                if (!ac_get_keyword(inputp, step->datap.idents)) {
+                if (!(step->datap.codes = ac_get_keyword(inputp, NULLP))) {
                     ac_error(ERROR_EXPECTED, "identifier");
                     ac_free_step(&step); 
                     return(NULLP);
@@ -768,6 +769,7 @@ int main(int argc, char **argv)
     char filenames[256]; 
     FILE *outputp;
     int cmplok;
+    pac_proc_ proc;
 
     /* init cmplgen */
     mem_reset(&cmplgen, sizeof(ac_cmplgen_));
@@ -786,7 +788,18 @@ int main(int argc, char **argv)
     closesource(&inputp);
 
     if (cmplok) {
-        ac_print_compiler(&cmplgen, outputp, proc_index);
+        proc = cmplgen.proc_listp;
+        while (proc) {
+            if (proc->inuseb && !proc->isdefb) {
+                ac_error(ERROR_UNDEF_PROC_USED, proc->names);
+                cmplok = FALSE;
+            }
+            proc = proc->nextp;
+        }
+
+        if (cmplok) {
+            ac_print_compiler(&cmplgen, outputp, proc_index);
+        }
     }
     
     fclose(outputp);
