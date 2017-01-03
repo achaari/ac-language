@@ -32,7 +32,7 @@
     [ ~(typeof, sizeof) '(' <type_name> ')' ;]
     
     /* parenth expression */
-    ['(' <expressions> ')' ;]
+    ['(' <expression> ')' ;]
     
     /* Variable reference or fonction call */
     [ '$' ] <variable_name>;
