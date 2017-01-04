@@ -15,7 +15,7 @@
 
 .lamda_definition :
     /* nested fonction / lampda expression */
-    ['(' { [')' ,] { ident [')' ,] ',' * } } ')' ['{' <block_statement> '}' ;] "=>" '(' <expressions> ')' ;]
+    ['(' { [')' ,] { ident [')' ,] ',' * } } ')' ['{' <block_statement> '}' ;] "=>" '(' <expression> ')' ;]
     
     /* function pointer */
     <type_name> { ['.'  <variable_name> * ] };
@@ -67,24 +67,25 @@
 
 .expression_statement : 
     [ ';' ; ]                    /* No opration statement */
-    [ <label_definition>  ;]              
-    [ ~(break,continue) ';' ;]   
-    [ ~goto ident ';' ;]
-    [ ~return [<expression>] ';' ;]
     [ <variable_declaration> ;]
     <expression> ';' 
     ;
 
-.keyword if : '(' <expression> ')' <block_statement> [~else <block_statement> ] ;
+.keyword if      : '(' <expression> ')' <block_statement> [~else <block_statement> ] ;
+.keyword while   : '(' <expression> ')' <block_statement> ;
+.keyword do      : <block_statement> ~while '(' <expression> ')' ';' ;
+.keyword switch  : '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;
+.keyword for     : '(' <expression_statement> { [';' ,] <expression>  ';'} {[')' ,] <expression> ')' } <block_statement> ;
+.keyword foreach : '(' <expression> ~in <expression> [ ':' <expression> ] ')' <block_statement> ;
+    
 
 .block_statement : 
+    [ ~(break,continue) ';' ;]   
+    [ ~goto ident ';' ;]
+    [ ~return [<expression>] ';' ;]
+    [ <label_definition>  ;]        
     [ <statement_block> ;]
-    [ ^if ;] 
-    [ ~while '(' <expression> ')' <block_statement> ;]
-    [ ~do <block_statement> ~while '(' <expression> ')' ';' ;] 
-    [ ~switch '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;]
-    [ ~for '(' <expression_statement> { [';' ,] <expression>  ';'} {[')' ,] <expression> ')' } <block_statement> ;]
-    [ ~foreach '(' <expression> ~in <expression> [ ':' <expression> ] ')' <block_statement> ;]
+    [ ^(if, while, do, switch, for, foreach) ;] 
     <expression_statement> 
     ;
     
