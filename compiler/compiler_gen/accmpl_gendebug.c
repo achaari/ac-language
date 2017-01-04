@@ -13,7 +13,7 @@ typedef enum {
 
 static const char *stats[]    = { "__ac_exec_step(", "__ac_try_step(", "__ac_check_step(", "__ac_check_step(", "", "" };
 static const char *prefixs[]  = { "", "", "if (", "if (", "                 OR ", "           AND " };
-static const char *postfixs[] = { "", ") \n", ") { \n", "", "", "" };
+static const char *postfixs[] = { "", ") \n", ")) { \n", "", "", "" };
 
 
 static int ac_is_simple_step(e_step_def_ stepdef)
@@ -96,7 +96,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         case STEP_DEF_ACCEPTPROC:
-            fprintf(outputp, "%sreturn(__ac_end_proc(cmplhndp, &procp));\n", &__tabs[tablidx]);
+            fprintf(outputp, "\n%sreturn(__ac_end_proc(cmplhndp, &procp));\n", &__tabs[tablidx]);
             break;
 
         case STEP_DEF_KEYWORD:
@@ -104,7 +104,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         case STEP_DEF_MULTI_KEYWORD:
-            fprintf(outputp, "%s%s%sONE_KEYWORD(", &__tabs[tablidx], prefixs[stat], stats[stat]);
+            fprintf(outputp, "%s%s%sKEYWORD(", &__tabs[tablidx], prefixs[stat], stats[stat]);
             endl = pxtab[(*indx)++]; idx = 0;
             while (idx < endl) {
                 fprintf(outputp, "\"%s\"%s", ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)++]), (idx < endl - 1) ? ", " : "");
@@ -215,6 +215,8 @@ void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp)
     pac_proc_ proc;
 
     int idx;
+
+    fprintf(outputp, "\n#include \"accmpldefs.h\"\n\n");
     
     fprintf(outputp, "\n/************* AC-PROCs PROTOTYPE *************/\n");
     proc = cmplgenp->proc_listp;
