@@ -29,6 +29,7 @@ typedef enum {
     STEP_TYPE_OPTSEQ,
     DEF_STEP(EXEC_PROC),
     DEF_STEP(EXEC_KEYWORD),
+    DEF_STEP(EXEC_ONEKEYWORD),
     DEF_STEP(LITERAL),
     DEF_STEP(KEYWORD),
     DEF_STEP(MULTI_KEYWORD),
@@ -39,17 +40,20 @@ typedef enum {
     DEF_STEP(MULTI_SYMBOL)
 } e_step_type_;
 
-typedef struct str_list_ {
-    char *codes;
+typedef struct data_list_ {
+    union {
+        char *codes;
+        int  inl;
+    } data;
     int indexl;
-    struct str_list_ *nextp;
-} ac_str_list_, *pac_str_list_;
+    struct data_list_ *nextp;
+} ac_data_list_, *pac_data_list_;
 
 typedef struct step_ {
     e_step_type_ type;
     union {
     struct proc_  *procp;
-        pac_str_list_ strlistp;
+        pac_data_list_ strlistp;
         char *codes;
         char chr;
     } datap;
@@ -73,13 +77,13 @@ typedef struct proc_{
 typedef struct cmplgen_ {
     char          *module_name;
     pac_proc_     proc_listp;
-    pac_str_list_ keyword_listp;
-    pac_str_list_ token_listp;
-    pac_str_list_ headers;
+    pac_data_list_ keyword_listp;
+    pac_data_list_ token_listp;
+    pac_data_list_ headers;
 } ac_cmplgen_, *pac_cmplgen_;
 
+char *ac_get_procname(pac_proc_ proc, int index);
 void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp);
-
 void ac_print_compiler(pac_cmplgen_ proc_listp, FILE *outputp, int procount);
 
 #endif
