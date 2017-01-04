@@ -2,12 +2,28 @@
 #include "accmpluti.h"
 #include "accmpl.h"
 
-static int ac_get_str_index(pac_str_list_ strlistp, char *keyword)
+char *ac_get_procname(pac_proc_ proc, int index)
+{
+    while (proc) {
+        if (proc->index == index) {
+            return(proc->names);
+        }
+        else if (proc->index > index) {
+            return("");
+        }
+
+        proc = proc->nextp;
+    }
+
+    return("");
+}
+
+static int ac_get_str_index(pac_data_list_ strlistp, char *keyword)
 {
     int cmpl;
     
     while (strlistp) {
-        cmpl = strcmp(strlistp->codes, keyword);
+        cmpl = strcmp(strlistp->data.codes, keyword);
         if (!cmpl) {
             return(strlistp->indexl);
         }
@@ -24,7 +40,7 @@ static int ac_get_str_index(pac_str_list_ strlistp, char *keyword)
 static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ steptype, e_step_ext_ stepext, int *tab, int* index)
 {
     pac_step_ substep;
-    pac_str_list_ strlistp; 
+    pac_data_list_ strlistp; 
     e_step_type_ exttype;
     e_step_ext_ extl;
     char str[2];
@@ -103,9 +119,23 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             tab[(*index)++] = step->datap.procp->index;
             break;
 
+        case STEP_TYPE_EXEC_ONEKEYWORD:
+            tab[(*index)++] = STEP_DEF_EXECONEKEYWORD + stepext;
+            endpos = (*index)++;
+            count = 0;
+            strlistp = step->datap.strlistp;
+            while (strlistp) {
+                count++;
+                tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, ac_get_procname(cmplgenp->proc_listp, strlistp->data.inl));
+                tab[(*index)++] = strlistp->data.inl;
+                strlistp = strlistp->nextp;
+            }
+            tab[endpos] = count;
+            break;
+
         case STEP_TYPE_KEYWORD:
             tab[(*index)++] = STEP_DEF_KEYWORD + stepext;
-            tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, step->datap.idents);
+            tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, step->datap.codes);
             break;
 
         case STEP_TYPE_MULTI_KEYWORD:
@@ -115,7 +145,7 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             strlistp = step->datap.strlistp;
             while (strlistp) {
                 count++;
-                tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, strlistp->codes);
+                tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, strlistp->data.codes);
                 strlistp = strlistp->nextp;
             }
             tab[endpos] = count;
@@ -133,7 +163,7 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             strlistp = step->datap.strlistp;
             while (strlistp) {
                 count++;
-                tab[(*index)++] = ac_get_str_index(cmplgenp->token_listp, strlistp->codes);
+                tab[(*index)++] = ac_get_str_index(cmplgenp->token_listp, strlistp->data.codes);
                 strlistp = strlistp->nextp;
             }
             tab[endpos] = count;
@@ -177,7 +207,7 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
 {
     pac_proc_ proc;
     pac_step_ step;
-    pac_str_list_ strlistp;
+    pac_data_list_ strlistp;
     char keystr[100];
 
     int _tab[10000], index = procount+1, idx = 0;
@@ -201,7 +231,7 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
         strlistp = cmplgenp->keyword_listp;
         while (strlistp) {
             strlistp->indexl = idx;
-            fprintf(outputp, " %18s%s", ac_fmtstr(strlistp->codes, keystr), (strlistp->nextp) ? "," : " };\n");
+            fprintf(outputp, " %18s%s", ac_fmtstr(strlistp->data.codes, keystr), (strlistp->nextp) ? "," : " };\n");
             if (!((idx++ + 1) % 9)) {
                 fprintf(outputp, "\n    ");
             }
@@ -216,7 +246,7 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
         strlistp = cmplgenp->token_listp;
         while (strlistp) {
             strlistp->indexl = idx;
-            fprintf(outputp, " %7s%s", ac_fmtstr(strlistp->codes, keystr), (strlistp->nextp) ? "," : " };\n");
+            fprintf(outputp, " %7s%s", ac_fmtstr(strlistp->data.codes, keystr), (strlistp->nextp) ? "," : " };\n");
             if (!((idx++ + 1) % 20)) {
                 fprintf(outputp, "\n    ");
             }
