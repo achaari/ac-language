@@ -208,13 +208,32 @@ static pac_step_ ac_get_step_child(PTR inputp, pac_step_ rootp, char stopchar)
     return(firstp);
 }
 
-static int ac_add_strlist(char *str, pac_str_list_ *firstp, pac_str_list_ *currentp)
+static int ac_add_strlist(char *str, pac_data_list_ *firstp, pac_data_list_ *currentp)
 {
-    pac_str_list_ strlistp = mem_get(sizeof(ac_str_list_));
+    pac_data_list_ strlistp = mem_get(sizeof(ac_data_list_));
 
     if (!strlistp) return(FALSE);
 
-    strlistp->codes = str;
+    strlistp->data.codes = str;
+
+    if (!*firstp) {
+        *firstp = *currentp = strlistp;
+    }
+    else {
+        (*currentp)->nextp = strlistp;
+        *currentp = strlistp;
+    }
+
+    return(TRUE);
+}
+
+static int ac_add_intlist(int intl, pac_data_list_ *firstp, pac_data_list_ *currentp)
+{
+    pac_data_list_ strlistp = mem_get(sizeof(ac_data_list_));
+
+    if (!strlistp) return(FALSE);
+
+    strlistp->data.inl = intl;
 
     if (!*firstp) {
         *firstp = *currentp = strlistp;
@@ -230,7 +249,7 @@ static int ac_add_strlist(char *str, pac_str_list_ *firstp, pac_str_list_ *curre
 static char *ac_get_keyword(PTR inputp, char *keyword)
 {
     char *identp;
-    pac_str_list_ curkeyp, keyp = cmplgen.keyword_listp;
+    pac_data_list_ curkeyp, keyp = cmplgen.keyword_listp;
 
     if (!(identp = get_ident(inputp))) {
         ac_error(ERROR_EXPECTED, "identifier");
@@ -242,7 +261,7 @@ static char *ac_get_keyword(PTR inputp, char *keyword)
     }
 
     /* Add to keyword list */
-    curkeyp = mem_get(sizeof(ac_str_list_));
+    curkeyp = mem_get(sizeof(ac_data_list_));
         
     if (!curkeyp) {
         mem_free(identp);
@@ -250,21 +269,21 @@ static char *ac_get_keyword(PTR inputp, char *keyword)
         return(NULLP);
     }
     
-    curkeyp->codes = identp;
+    curkeyp->data.codes = identp;
 
-    if (!cmplgen.keyword_listp || strcmp(cmplgen.keyword_listp->codes, identp) < 0) {
+    if (!cmplgen.keyword_listp || strcmp(cmplgen.keyword_listp->data.codes, identp) < 0) {
         curkeyp->nextp = cmplgen.keyword_listp;
         cmplgen.keyword_listp = curkeyp;
         return(identp);
     }
 
     while (keyp) {
-        if (! strcmp(keyp->codes, identp)) {
+        if (! strcmp(keyp->data.codes, identp)) {
             mem_free(identp);
             mem_free(curkeyp);
-            return(keyp->codes);
+            return(keyp->data.codes);
         }
-        else if (keyp->nextp && strcmp(keyp->nextp->codes, identp) < 0) {
+        else if (keyp->nextp && strcmp(keyp->nextp->data.codes, identp) < 0) {
             curkeyp->nextp = keyp->nextp;
             keyp->nextp = curkeyp;
             return(identp);
@@ -285,10 +304,10 @@ static char *ac_get_keyword(PTR inputp, char *keyword)
 
 static char *ac_add_token(char *token)
 {
-    pac_str_list_ curkeyp, keyp = cmplgen.token_listp;
+    pac_data_list_ curkeyp, keyp = cmplgen.token_listp;
 
     /* Add to token list */
-    curkeyp = mem_get(sizeof(ac_str_list_));
+    curkeyp = mem_get(sizeof(ac_data_list_));
 
     if (!curkeyp) {
         mem_free(token);
@@ -296,21 +315,21 @@ static char *ac_add_token(char *token)
         return(NULLP);
     }
 
-    curkeyp->codes = token;
+    curkeyp->data.codes = token;
 
-    if (!cmplgen.token_listp || strcmp(cmplgen.token_listp->codes, token) < 0) {
+    if (!cmplgen.token_listp || strcmp(cmplgen.token_listp->data.codes, token) < 0) {
         curkeyp->nextp = cmplgen.token_listp;
         cmplgen.token_listp = curkeyp;
         return(token);
     }
 
     while (keyp) {
-        if (!strcmp(keyp->codes, token)) {
+        if (!strcmp(keyp->data.codes, token)) {
             mem_free(token);
             mem_free(curkeyp);
-            return(keyp->codes);
+            return(keyp->data.codes);
         }
-        else if (keyp->nextp && strcmp(keyp->nextp->codes, token) < 0) {
+        else if (keyp->nextp && strcmp(keyp->nextp->data.codes, token) < 0) {
             curkeyp->nextp = keyp->nextp;
             keyp->nextp = curkeyp;
             return(token);
@@ -362,7 +381,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 {
     pac_proc_ tmptrpc;
     pac_step_ step;
-    pac_str_list_ strlistp;
+    pac_data_list_ strlistp;
     char idents[MAX_LEN], *identp;
     char chr = get(inputp);
 
@@ -481,29 +500,82 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
             return(step);
 
         case '^':
-            if (! ac_get_keyword(inputp, idents)) {
-                ac_error(ERROR_EXPECTED, "identifier");
-                return(NULLP);
-            }
-            
-            tmptrpc = ac_get_proc(cmplgen.proc_listp, idents);
-            if (!tmptrpc) {
-                ac_error(ERROR_UNDEFINED_PROC, idents);
-                return(NULLP);
-            }
-            else if (tmptrpc->type != PROC_TYPE_KEYWORD){
-                ac_error(ERROR_UNEXPECTED_PROC, idents);
-                return(NULLP);
-            }
+            if (check_char(inputp, '(')) {
+                step = ac_new_step(STEP_TYPE_EXEC_ONEKEYWORD, rootp, curstepp);
+                if (!step) {
+                    ac_error(ERROR_MEMORY_ALLOC, "execonekeyword");
+                    return(NULLP);
+                }
 
-            step = ac_new_step(STEP_TYPE_EXEC_KEYWORD, rootp, curstepp);
-            if (!step) {
-                ac_error(ERROR_MEMORY_ALLOC, "execkeyword");
-                return(NULLP);
+                strlistp = NULLP;
+
+                while (next(inputp)) {
+                    if (!(identp = ac_get_keyword(inputp, NULLP))) {
+                        ac_error(ERROR_EXPECTED, "identifier");
+                        ac_free_step(&step);
+                        return(NULLP);
+                    }
+
+                    tmptrpc = ac_get_proc(cmplgen.proc_listp, identp);
+                    if (!tmptrpc) {
+                        ac_error(ERROR_UNDEFINED_PROC, identp);
+                        ac_free_step(&step);
+                        return(NULLP);
+                    }
+                    else if (tmptrpc->type != PROC_TYPE_KEYWORD){
+                        ac_error(ERROR_UNEXPECTED_PROC, identp);
+                        ac_free_step(&step);
+                        return(NULLP);
+                    }
+
+                    if (!ac_add_intlist(tmptrpc->index, &step->datap.strlistp, &strlistp)) {
+                        ac_error(ERROR_MEMORY_ALLOC, "keyliste");
+                        ac_free_step(&step);
+                        return(NULLP);
+                    }
+
+                    tmptrpc->inuseb = TRUE;
+
+                    if (check_char(inputp, ',')) {
+                        continue;
+                    }
+                    else if (check_char(inputp, ')')) {
+                        break;
+                    }
+                    else {
+                        ac_error(ERROR_EXPECTED, "char", ')');
+                        ac_free_step(&step);
+                        return(NULLP);
+                    }
+                }
+                
+                return(step);
             }
-            tmptrpc->inuseb = TRUE;
-            step->datap.procp = tmptrpc;
-            return(step);
+            else {
+                if (!ac_get_keyword(inputp, idents)) {
+                    ac_error(ERROR_EXPECTED, "identifier");
+                    return(NULLP);
+                }
+
+                tmptrpc = ac_get_proc(cmplgen.proc_listp, idents);
+                if (!tmptrpc) {
+                    ac_error(ERROR_UNDEFINED_PROC, idents);
+                    return(NULLP);
+                }
+                else if (tmptrpc->type != PROC_TYPE_KEYWORD){
+                    ac_error(ERROR_UNEXPECTED_PROC, idents);
+                    return(NULLP);
+                }
+
+                step = ac_new_step(STEP_TYPE_EXEC_KEYWORD, rootp, curstepp);
+                if (!step) {
+                    ac_error(ERROR_MEMORY_ALLOC, "execkeyword");
+                    return(NULLP);
+                }
+                tmptrpc->inuseb = TRUE;
+                step->datap.procp = tmptrpc;
+                return(step);
+            }
 
         case '~' :
             if (check_char(inputp, '(')) {
@@ -518,10 +590,12 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 while (next(inputp)) {
                     if (!(identp = ac_get_keyword(inputp, NULLP))) {
                         ac_error(ERROR_EXPECTED, "identifier");
+                        ac_free_step(&step);
                         return(NULLP);
                     }
                     else if (! ac_add_strlist(identp, &step->datap.strlistp, &strlistp)) {
                         ac_error(ERROR_MEMORY_ALLOC, "keyliste");
+                        ac_free_step(&step);
                         return(NULLP);
                     }
                     
@@ -533,6 +607,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                     }
                     else {
                         ac_error(ERROR_EXPECTED, "char", ')');
+                        ac_free_step(&step);
                         return(NULLP);
                     }
                 }
@@ -711,7 +786,7 @@ static int ac_gen(PTR inputp)
 {
     int tmpl = FALSE; 
     char *tmps, idents[MAX_LEN];
-    pac_str_list_ curheader = NULLP;
+    pac_data_list_ curheader = NULLP;
     
     while (next(inputp)) {
 
