@@ -12,27 +12,11 @@ static const char *stats[]    = { "__ac_exec_step", "__ac_try_step", "__ac_check
 static const char *prefixs[]  = { "", "", "if (" };
 static const char *postfixs[] = { "", "", ") {" };
 
-static char *ac_get_proc(pac_proc_ proc, int index)
-{
-    while (proc) {
-        if (proc->index == index) {
-            return(proc->names);
-        }
-        else if (proc->index > index) {
-            return("");
-        }
-
-        proc = proc->nextp;
-    }
-
-    return("");
-}
-
-static char *ac_get_str(pac_str_list_ strlistp, int index)
+static char *ac_get_str(pac_data_list_ strlistp, int index)
 {
     while (strlistp) {
         if (strlistp->indexl == index) {
-            return(strlistp->codes);
+            return(strlistp->data.codes);
         }
         else if (strlistp->indexl > index) {
             return("");
@@ -68,16 +52,26 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         case STEP_DEF_EXECPROC:
-            fprintf(outputp, "%s%s%s(EXECPROC(__exec_%s))%s \n", &__tabs[tablidx], prefixs[stat], stats[stat], ac_get_proc(cmplgenp->proc_listp, pxtab[(*indx)++]), postfixs[stat]);
+            fprintf(outputp, "%s%s%s(EXECPROC(%s))%s \n", &__tabs[tablidx], prefixs[stat], stats[stat], ac_get_procname(cmplgenp->proc_listp, pxtab[(*indx)++]), postfixs[stat]);
             break;   
 
         case STEP_DEF_EXECKEYWORD:
-            fprintf(outputp, "%s%s%s(EXECKEYWORD(\"%s\",__exec_keyword_%s))%s \n", 
+            fprintf(outputp, "%s%s%s(EXECKEYWORD(KEY(%s)))%s \n", 
                     &__tabs[tablidx], prefixs[stat], stats[stat], 
                     ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)]), 
-                    ac_get_proc(cmplgenp->proc_listp, pxtab[(*indx)+1]), 
                     postfixs[stat]);
-	    (*indx) += 2;
+            (*indx) += 2;
+            break;
+
+        case STEP_DEF_EXECONEKEYWORD:
+            fprintf(outputp, "%s%s%s(EXECKEYWORD(", &__tabs[tablidx], prefixs[stat], stats[stat]);
+            endl = pxtab[(*indx)++]; idx = 0;
+            while (idx < endl) {
+                fprintf(outputp, "KEY(%s)%s", ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)]), (idx < endl - 1) ? ", " : "");
+                (*indx) += 2;
+                idx++;
+            }
+            fprintf(outputp, ")%s\n", postfixs[stat]);
             break;
 
         case STEP_DEF_LITERAL:
@@ -188,14 +182,13 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
 void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp)
 {
     pac_proc_ proc;
-    pac_step_ step;
 
     int idx;
     
     fprintf(outputp, "\n/************* AC-PROCs PROTOTYPE *************/\n");
     proc = cmplgenp->proc_listp;
     while (proc) {
-	fprintf(outputp, "static int __exec_%s%s(p_accmpl_ cmplhndp);\n", (proc->type == PROC_TYPE_KEYWORD) ? "keyword_" : "", proc->names, proc->names, proc->names);
+        fprintf(outputp, "static int __exec_%s%s(p_accmpl_ cmplhndp);\n", (proc->type == PROC_TYPE_KEYWORD) ? "keyword_" : "", proc->names, proc->names, proc->names);
         proc = proc->nextp;
     }
 
