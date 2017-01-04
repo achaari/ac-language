@@ -22,28 +22,29 @@ static const char * __tokens[] = {
 
 #ifndef AC_DEBUG
 static const int __prcex[] = {
-       537,    17,    28,    45,    68,   209,   250,   257,   274,   323,   325,   361,   426,   431,   469,   484,   508,    27,    32,     5,     1,    27,    36,     1,     7,
-         4,     5,     3,    44,    27,     2,    13,    19,     7,    14,     2,    42,    32,    30,     7,    14,     4,    32,    20,     3,    67,    22,    20,    17,    32,
-        37,     1,    63,    36,    36,     1,    63,    17,    36,    36,    32,    30,     5,    34,    20,     7,     1,     3,   208,     9,     1,     2,    90,    22,    17,
-        32,    37,     7,     5,    32,    36,     7,     4,     2,    89,    22,    25,     7,     4,     4,     2,   103,    22,     0,    32,    37,     7,     5,    32,    36,
-         7,     4,     4,     2,   120,    22,    26,     7,     4,    22,     0,    32,    37,     7,     5,    32,    36,    32,    20,     4,     2,   156,    22,     4,    32,
-        37,     7,     5,    32,    36,    32,     5,     1,   155,    36,     1,     2,   147,    22,    27,    32,    22,     7,     4,    32,     1,     6,    22,    30,    12,
-        32,    22,     7,     4,     5,     4,     2,   183,    22,    22,    32,    37,     7,    13,     1,   172,    36,    20,     7,     5,    32,    20,     1,   180,    36,
-        36,     7,     5,    32,    36,     7,     4,     4,     2,   206,    22,    21,    32,    37,     7,     5,    22,    16,     7,     5,     2,   201,    32,    22,     7,
-         5,    32,    36,     7,     4,     4,     7,    13,     3,   249,     2,   219,    37,     2,    32,    28,     7,     5,     4,     2,   231,    37,     6,    43,    29,
-        33,    40,    35,     0,     7,    11,     2,   239,    27,     2,    14,    24,     7,     6,     2,   249,    32,     8,     7,     5,    32,    22,     7,     5,     3,
-       256,     1,   256,    17,    35,    21,     3,   273,    17,     2,   273,    32,    37,    34,    36,     1,   271,     7,     5,    35,    30,    32,    36,     3,   322,
-         2,   311,    32,    37,     1,   291,    36,    36,     1,   291,    17,    36,    36,    32,    30,     5,    32,    36,     2,   302,    32,     5,     7,     4,    32,
-         1,     4,    32,    13,    32,    37,     7,     9,    32,    36,     4,     7,     6,     1,   322,     2,   322,    32,    25,     7,     7,     5,     3,   324,     3,
-       360,    14,     2,   334,    32,     7,     7,     8,     4,     2,   347,    27,     2,     3,     6,    32,    37,     7,     6,    32,    36,     4,     2,   356,    32,
-        37,     7,     9,    32,    36,     4,    33,    41,     7,     7,     3,   425,     7,    10,     1,   377,     2,   377,    37,     4,    26,    21,    22,    25,     7,
-         7,     5,    38,     2,    32,    28,     2,   387,    22,    32,     7,     6,     2,   402,    37,     9,    15,    31,    27,    34,    23,    38,     3,    17,     9,
-         7,     5,     2,   425,    37,    17,     2,    39,     4,    40,    14,    11,    16,    10,    18,    12,    19,    42,    33,    29,    35,    24,     6,     7,     5,
-         3,   430,    17,    32,    22,     3,   468,    34,    20,     9,    12,     2,   445,    27,     2,    31,    28,    32,    20,     4,     2,   453,    22,    18,    17,
-        32,    20,     4,     2,   462,    22,     8,     8,     5,    32,    20,     4,     9,     2,     7,     5,    32,    20,     3,   483,    17,     2,   477,    22,    32,
-         7,     6,     2,   483,    32,    15,     7,     5,     3,   507,    28,     9,     9,    11,    10,    15,    23,     7,     5,     1,    29,     2,   505,    22,     2,
-         7,    14,    32,    20,     4,     7,     3,     3,   536,    22,    12,    17,     2,   522,    32,    22,     1,   522,     7,     6,    35,    30,    32,     5,     1,
-       536,     7,    15,     2,   535,    32,     1,    32,    20,     6,     5,     3,   544,     9,     2,     9,    16,     9,     3,     3 };
+       544,    22,    24,    41,    71,   129,   170,   177,   194,   243,   279,   344,   349,   359,   375,   385,   399,   432,   456,   476,   491,   515,    23,     3,    40,
+        37,     2,    13,    19,     7,    19,     2,    38,    42,    30,     7,    19,     4,    42,    20,     3,    70,    32,    20,    27,    42,    37,     1,    59,    46,
+        36,     1,    59,    27,    46,    36,    42,    30,     5,    44,    20,    42,     5,     1,    70,    46,     1,     7,     4,     5,     3,   128,     2,    81,    37,
+         2,    31,    28,    42,    20,     4,     2,    89,    32,    18,    27,    42,    20,     4,     2,    98,    32,     8,     8,     5,    42,    20,     4,    19,     6,
+        17,    13,     0,    14,    26,    15,     4,    16,    22,    17,    21,    18,     2,   124,    42,     5,     1,   123,    46,     1,     7,     4,     5,     4,     9,
+        11,     7,    12,     3,   169,     2,   139,    47,     2,    32,    28,     7,     5,     4,     2,   151,    47,     6,    43,    29,    33,    40,    35,     0,     7,
+        10,     2,   159,    37,     2,    14,    24,     7,     6,     2,   169,    42,     8,     7,     5,    42,    22,     7,     5,     3,   176,     1,   176,    27,    45,
+        21,     3,   193,    27,     2,   193,    42,    37,    44,    36,     1,   191,     7,     5,    45,    30,    42,    36,     3,   242,     2,   231,    42,    37,     1,
+       211,    46,    36,     1,   211,    27,    46,    36,    42,    30,     5,    42,    36,     2,   222,    42,     5,     7,     4,    42,     1,     4,    42,    13,    42,
+        37,     7,     5,    42,    36,     4,     7,     6,     1,   242,     2,   242,    42,    25,     7,     7,     5,     3,   278,    24,     2,   252,    42,     7,     7,
+         8,     4,     2,   265,    37,     2,     3,     6,    42,    37,     7,     6,    42,    36,     4,     2,   274,    42,    37,     7,     5,    42,    36,     4,    43,
+        41,     7,     7,     3,   343,     7,     9,     1,   295,     2,   295,    47,     4,    26,    21,    22,    25,     7,     7,     5,    48,     2,    32,    28,     2,
+       305,    32,    32,     7,     6,     2,   320,    47,     9,    15,    31,    27,    34,    23,    38,     3,    17,     9,     7,     5,     2,   343,    47,    17,     2,
+        39,     4,    40,    14,    11,    16,    10,    18,    12,    19,    42,    33,    29,    35,    24,     6,     7,     5,     3,   348,    27,    42,    22,     3,   358,
+        44,    20,     9,     2,     7,     5,    42,    20,     3,   374,    42,    37,     7,     5,    42,    36,     7,     4,     2,   374,    32,    25,     7,     4,     3,
+       384,    42,    37,     7,     5,    42,    36,     7,     4,     3,   398,     7,     4,    32,     0,    42,    37,     7,     5,    42,    36,    42,    20,     3,   431,
+        42,    37,     7,     5,    42,    36,    42,     5,     1,   431,    46,     1,     2,   423,    32,    27,    42,    22,     7,     4,    42,     1,     6,    32,    30,
+        22,    42,    22,     7,     4,     5,     3,   455,    42,    37,     7,    12,     1,   445,    46,    20,     7,     5,    42,    20,     1,   453,    46,    36,     7,
+         5,    42,    36,     7,     4,     3,   475,    42,    37,     7,     5,    32,    16,     7,     5,     2,   471,    42,    22,     7,     5,    42,    36,     7,     4,
+         3,   490,    27,     2,   484,    32,    32,     7,     6,     2,   490,    42,    15,     7,     5,     3,   514,    38,     9,     9,    11,    10,    15,    23,     7,
+         5,     1,    29,     2,   512,    32,     2,     7,    19,    42,    20,     4,     7,     3,     3,   543,    32,    12,    27,     2,   529,    42,    22,     1,   529,
+         7,     6,    45,    30,    42,     5,     1,   543,     7,    20,     2,   542,    42,     1,    42,    20,     6,     5,     3,   551,     9,     2,     9,    21,     9,
+         3,     3 };
 
 #else
 extern int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp);
@@ -66,11 +67,16 @@ static int __exec_expression(p_accmpl_ cmplhndp);
 static int __exec_type_name(p_accmpl_ cmplhndp);
 static int __exec_variable_name(p_accmpl_ cmplhndp);
 static int __exec_lamda_definition(p_accmpl_ cmplhndp);
-static int __exec_expressions(p_accmpl_ cmplhndp);
 static int __exec_variable_expression(p_accmpl_ cmplhndp);
 static int __exec_unit_expression(p_accmpl_ cmplhndp);
 static int __exec_label_definition(p_accmpl_ cmplhndp);
 static int __exec_expression_statement(p_accmpl_ cmplhndp);
+static int __exec_keyword_if(p_accmpl_ cmplhndp);
+static int __exec_keyword_while(p_accmpl_ cmplhndp);
+static int __exec_keyword_do(p_accmpl_ cmplhndp);
+static int __exec_keyword_switch(p_accmpl_ cmplhndp);
+static int __exec_keyword_for(p_accmpl_ cmplhndp);
+static int __exec_keyword_foreach(p_accmpl_ cmplhndp);
 static int __exec_variable_definition(p_accmpl_ cmplhndp);
 static int __exec_object_member(p_accmpl_ cmplhndp);
 static int __exec_object_definition(p_accmpl_ cmplhndp);
@@ -81,17 +87,6 @@ static int __exec_statement_block(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_statement_block, "statement_block");
 
-    __ac_exec_step(SYMBOL('{')) 
-    __ac_exec_stat(BEG_PROCSEQ);
-    while (__ac_pocess_next(cmplhndp)) {
-        if (__ac_check_step(SYMBOL('}'))) { 
-            break;
-        }
-
-        __ac_exec_step(EXECPROC(__exec_block_statement)) 
-    }
-    __ac_exec_stat(END_PROCSEQ);
-
     return(__ac_end_proc(cmplhndp, &procp));
 }
 
@@ -100,13 +95,13 @@ static int __exec_variable_declaration(p_accmpl_ cmplhndp)
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_variable_declaration, "variable_declaration");
 
     __ac_exec_step(ONE_KEYWORD("local", "global")
-    __ac_exec_step(EXECPROC(__exec_variable_definition)) 
+    __ac_exec_step(EXECPROC(variable_definition))
     if (__ac_check_step(SYMBOL(','))) { 
-        __ac_exec_step(EXECPROC(__exec_variable_definition)) 
+        __ac_exec_step(EXECPROC(variable_definition))
         __ac_exec_step(ACCEPT)
     }
 
-    __ac_exec_step(SYMBOL(';')) 
+    __ac_exec_step(SYMBOL(';'))
     return(__ac_end_proc(cmplhndp, &procp));
 }
 
@@ -115,8 +110,8 @@ static int __exec_function_definition(p_accmpl_ cmplhndp)
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_function_definition, "function_definition");
 
     __ac_exec_step(KEYWORD("function"))
-    __ac_exec_step(IDENT) 
-    __ac_exec_step(SYMBOL('(')) 
+    __ac_exec_step(IDENT)
+    __ac_exec_step(SYMBOL('('))
     __ac_exec_stat(BEG_PROCSEQ);
     while (__ac_pocess_next(cmplhndp)) {
         if (__ac_check_step(SYMBOL(')'))) { 
@@ -125,23 +120,33 @@ static int __exec_function_definition(p_accmpl_ cmplhndp)
 
         __ac_exec_stat(BEG_PROCSEQ);
         while (__ac_pocess_next(cmplhndp)) {
-            __ac_exec_step(IDENT) 
+            __ac_exec_step(IDENT)
             if (__ac_check_step(SYMBOL(')'))) { 
                 break;
             }
 
-            __ac_exec_step(SYMBOL(',')) 
+            __ac_exec_step(SYMBOL(','))
         }
         __ac_exec_stat(END_PROCSEQ);
 
     }
     __ac_exec_stat(END_PROCSEQ);
 
-    if (__ac_check_step(SYMBOL(';'))) { 
+    if (__ac_check_step(SYMBOL(';'))) {
         return(__ac_end_proc(cmplhndp, &procp));
     }
 
-    __ac_exec_step(EXECPROC(__exec_statement_block)) 
+    __ac_exec_step(SYMBOL('{'))
+    __ac_exec_stat(BEG_PROCSEQ);
+    while (__ac_pocess_next(cmplhndp)) {
+        if (__ac_check_step(SYMBOL('}'))) { 
+            break;
+        }
+
+        __ac_exec_step(EXECPROC(block_statement))
+    }
+    __ac_exec_stat(END_PROCSEQ);
+
     return(__ac_end_proc(cmplhndp, &procp));
 }
 
@@ -149,114 +154,46 @@ static int __exec_block_statement(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_block_statement, "block_statement");
 
-    if (__ac_check_step(EXECPROC(__exec_statement_block))) { 
+    if (__ac_check_step(ONE_KEYWORD("break", "continue")) { 
+        __ac_exec_step(SYMBOL(';'))
+        __ac_exec_step(ACCEPT)
+    }
+
+    if (__ac_check_step(KEYWORD("goto"))) { 
+        __ac_exec_step(IDENT)
+        __ac_exec_step(SYMBOL(';'))
+        __ac_exec_step(ACCEPT)
+    }
+
+    if (__ac_check_step(KEYWORD("return"))) { 
+        __ac_try_step(EXECPROC(expression))
+        __ac_exec_step(SYMBOL(';'))
+        __ac_exec_step(ACCEPT)
+    }
+
+    if (__ac_check_step(EXECKEYWORD(KEY(if), KEY(while), KEY(do), KEY(switch), KEY(for), KEY(foreach))) {
         return(__ac_end_proc(cmplhndp, &procp));
     }
 
-    if (__ac_check_step(KEYWORD("if"))) {
-        __ac_exec_step(SYMBOL('(')) 
-        __ac_exec_step(EXECPROC(__exec_expression)) 
-        __ac_exec_step(SYMBOL(')')) 
-        __ac_exec_step(EXECPROC(__exec_block_statement)) 
-        if (__ac_check_step(KEYWORD("else"))) {
-            __ac_exec_step(EXECPROC(__exec_block_statement)) 
-        }
-
-        __ac_exec_step(ACCEPT)
-    }
-
-    if (__ac_check_step(KEYWORD("while"))) {
-        __ac_exec_step(SYMBOL('(')) 
-        __ac_exec_step(EXECPROC(__exec_expression)) 
-        __ac_exec_step(SYMBOL(')')) 
-        __ac_exec_step(EXECPROC(__exec_block_statement)) 
-        __ac_exec_step(ACCEPT)
-    }
-
-    if (__ac_check_step(KEYWORD("do"))) {
-        __ac_exec_step(EXECPROC(__exec_block_statement)) 
-        __ac_exec_step(KEYWORD("while"))
-        __ac_exec_step(SYMBOL('(')) 
-        __ac_exec_step(EXECPROC(__exec_expression)) 
-        __ac_exec_step(SYMBOL(')')) 
-        __ac_exec_step(SYMBOL(';')) 
-        __ac_exec_step(ACCEPT)
-    }
-
-    if (__ac_check_step(KEYWORD("switch"))) {
-        __ac_exec_step(SYMBOL('(')) 
-        __ac_exec_step(EXECPROC(__exec_expression)) 
-        __ac_exec_step(SYMBOL(')')) 
-        __ac_exec_step(SYMBOL('{')) 
+    if (__ac_check_step(SYMBOL('{'))) { 
         __ac_exec_stat(BEG_PROCSEQ);
         while (__ac_pocess_next(cmplhndp)) {
             if (__ac_check_step(SYMBOL('}'))) { 
                 break;
             }
 
-            if (__ac_check_step(KEYWORD("default"))) {
-                __ac_exec_step(SYMBOL(':')) 
-                __ac_exec_step(EXECPROC(__exec_block_statement)) 
-                __ac_exec_step(SYMBOL('}')) 
-                break;
-            }
-
-            __ac_exec_step(KEYWORD("case"))
-            __ac_exec_step(LITERAL) 
-            __ac_exec_step(SYMBOL(':')) 
-            __ac_exec_step(EXECPROC(__exec_block_statement)) 
+            __ac_exec_step(EXECPROC(block_statement))
         }
         __ac_exec_stat(END_PROCSEQ);
 
         __ac_exec_step(ACCEPT)
     }
 
-    if (__ac_check_step(KEYWORD("for"))) {
-        __ac_exec_step(SYMBOL('(')) 
-        __ac_exec_step(EXECPROC(__exec_expression_statement)) 
-        __ac_exec_stat(BEG_PROCSEQ);
-        while (__ac_pocess_next(cmplhndp)) {
-            if (__ac_check_step(SYMBOL(';'))) { 
-                break;
-            }
-
-            __ac_exec_step(EXECPROC(__exec_expression)) 
-            __ac_exec_step(SYMBOL(';')) 
-            break;
-        }
-        __ac_exec_stat(END_PROCSEQ);
-
-        __ac_exec_stat(BEG_PROCSEQ);
-        while (__ac_pocess_next(cmplhndp)) {
-            if (__ac_check_step(SYMBOL(')'))) { 
-                break;
-            }
-
-            __ac_exec_step(EXECPROC(__exec_expression)) 
-            __ac_exec_step(SYMBOL(')')) 
-            break;
-        }
-        __ac_exec_stat(END_PROCSEQ);
-
-        __ac_exec_step(EXECPROC(__exec_block_statement)) 
-        __ac_exec_step(ACCEPT)
+    if (__ac_check_step(EXECPROC(label_definition))) {
+        return(__ac_end_proc(cmplhndp, &procp));
     }
 
-    if (__ac_check_step(KEYWORD("foreach"))) {
-        __ac_exec_step(SYMBOL('(')) 
-        __ac_exec_step(EXECPROC(__exec_expression)) 
-        __ac_exec_step(KEYWORD("in"))
-        __ac_exec_step(EXECPROC(__exec_expression)) 
-        if (__ac_check_step(SYMBOL(':'))) { 
-            __ac_exec_step(EXECPROC(__exec_expression)) 
-        }
-
-        __ac_exec_step(SYMBOL(')')) 
-        __ac_exec_step(EXECPROC(__exec_block_statement)) 
-        __ac_exec_step(ACCEPT)
-    }
-
-    __ac_exec_step(EXECPROC(__exec_expression_statement)) 
+    __ac_exec_step(EXECPROC(expression_statement))
     return(__ac_end_proc(cmplhndp, &procp));
 }
 
@@ -264,23 +201,23 @@ static int __exec_expression(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_expression, "expression");
 
-    if (__ac_check_step(ONE_TOKEN("++", "--")) {
-        __ac_exec_step(EXECPROC(__exec_expression)) 
+    if (__ac_check_step(ONE_TOKEN("++", "--")) { 
+        __ac_exec_step(EXECPROC(expression))
         __ac_exec_step(ACCEPT)
     }
 
-    if (__ac_check_step(ONE_TOKEN("!", "-", "+", "&", "*", "~")) {
-        __ac_exec_step(EXECPROC(__exec_unit_expression)) 
+    if (__ac_check_step(ONE_TOKEN("!", "-", "+", "&", "*", "~")) { 
+        __ac_exec_step(EXECPROC(unit_expression))
     }
 
-    if (__ac_check_step(ONE_KEYWORD("is", "extend")) {
-        __ac_exec_step(EXECPROC(__exec_type_name)) 
+    if (__ac_check_step(ONE_KEYWORD("is", "extend")) { 
+        __ac_exec_step(EXECPROC(type_name))
     }
 
     if (__ac_check_step(SYMBOL('?'))) { 
-        __ac_exec_step(EXECPROC(__exec_expression)) 
-        __ac_exec_step(SYMBOL(':')) 
-        __ac_exec_step(EXECPROC(__exec_expression)) 
+        __ac_exec_step(EXECPROC(expression))
+        __ac_exec_step(SYMBOL(':'))
+        __ac_exec_step(EXECPROC(expression))
     }
 
     return(__ac_end_proc(cmplhndp, &procp));
@@ -292,7 +229,7 @@ static int __exec_type_name(p_accmpl_ cmplhndp)
 
     __ac_exec_stat(BEG_PROCSEQ);
     while (__ac_pocess_next(cmplhndp)) {
-        __ac_exec_step(IDENT) 
+        __ac_exec_step(IDENT)
         if (__ac_check_step(TOKEN("::"))) { 
             continue;
         }
@@ -308,15 +245,15 @@ static int __exec_variable_name(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_variable_name, "variable_name");
 
-    __ac_exec_step(IDENT) 
+    __ac_exec_step(IDENT)
     if (__ac_check_step(SYMBOL('('))) { 
-        if (__ac_check_step(SYMBOL(')'))) { 
+        if (__ac_check_step(SYMBOL(')'))) {
             return(__ac_end_proc(cmplhndp, &procp));
         }
 
         __ac_exec_stat(BEG_PROCSEQ);
         while (__ac_pocess_next(cmplhndp)) {
-            __ac_exec_step(EXECPROC(__exec_expression)) 
+            __ac_exec_step(EXECPROC(expression))
             if (__ac_check_step(SYMBOL(','))) { 
                 continue;
             }
@@ -325,7 +262,7 @@ static int __exec_variable_name(p_accmpl_ cmplhndp)
         }
         __ac_exec_stat(END_PROCSEQ);
 
-        __ac_exec_step(SYMBOL(')')) 
+        __ac_exec_step(SYMBOL(')'))
     }
 
     return(__ac_end_proc(cmplhndp, &procp));
@@ -344,49 +281,42 @@ static int __exec_lamda_definition(p_accmpl_ cmplhndp)
 
             __ac_exec_stat(BEG_PROCSEQ);
             while (__ac_pocess_next(cmplhndp)) {
-                __ac_exec_step(IDENT) 
+                __ac_exec_step(IDENT)
                 if (__ac_check_step(SYMBOL(')'))) { 
                     break;
                 }
 
-                __ac_exec_step(SYMBOL(',')) 
+                __ac_exec_step(SYMBOL(','))
             }
             __ac_exec_stat(END_PROCSEQ);
 
         }
         __ac_exec_stat(END_PROCSEQ);
 
-        __ac_exec_step(SYMBOL(')')) 
+        __ac_exec_step(SYMBOL(')'))
         if (__ac_check_step(SYMBOL('{'))) { 
-            __ac_exec_step(EXECPROC(__exec_block_statement)) 
-            __ac_exec_step(SYMBOL('}')) 
+            __ac_exec_step(EXECPROC(block_statement))
+            __ac_exec_step(SYMBOL('}'))
             __ac_exec_step(ACCEPT)
         }
 
-        __ac_exec_step(TOKEN("=>")) 
-        __ac_exec_step(SYMBOL('(')) 
-        __ac_exec_step(EXECPROC(__exec_expressions)) 
-        __ac_exec_step(SYMBOL(')')) 
+        __ac_exec_step(TOKEN("=>"))
+        __ac_exec_step(SYMBOL('('))
+        __ac_exec_step(EXECPROC(expression))
+        __ac_exec_step(SYMBOL(')'))
         __ac_exec_step(ACCEPT)
     }
 
-    __ac_exec_step(EXECPROC(__exec_type_name)) 
+    __ac_exec_step(EXECPROC(type_name))
     __ac_exec_stat(BEG_PROCSEQ);
     while (__ac_pocess_next(cmplhndp)) {
         if (__ac_check_step(SYMBOL('.'))) { 
-            __ac_exec_step(EXECPROC(__exec_variable_name)) 
+            __ac_exec_step(EXECPROC(variable_name))
             continue;
         }
 
     }
     __ac_exec_stat(END_PROCSEQ);
-
-    return(__ac_end_proc(cmplhndp, &procp));
-}
-
-static int __exec_expressions(p_accmpl_ cmplhndp)
-{
-    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_expressions, "expressions");
 
     return(__ac_end_proc(cmplhndp, &procp));
 }
@@ -395,30 +325,30 @@ static int __exec_variable_expression(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_variable_expression, "variable_expression");
 
-    if (__ac_check_step(LITERAL)) { 
+    if (__ac_check_step(LITERAL)) {
         return(__ac_end_proc(cmplhndp, &procp));
     }
 
     if (__ac_check_step(SYMBOL('@'))) { 
-        __ac_exec_step(EXECPROC(__exec_lamda_definition)) 
+        __ac_exec_step(EXECPROC(lamda_definition))
         __ac_exec_step(ACCEPT)
     }
 
-    if (__ac_check_step(ONE_KEYWORD("typeof", "sizeof")) {
-        __ac_exec_step(SYMBOL('(')) 
-        __ac_exec_step(EXECPROC(__exec_type_name)) 
-        __ac_exec_step(SYMBOL(')')) 
+    if (__ac_check_step(ONE_KEYWORD("typeof", "sizeof")) { 
+        __ac_exec_step(SYMBOL('('))
+        __ac_exec_step(EXECPROC(type_name))
+        __ac_exec_step(SYMBOL(')'))
         __ac_exec_step(ACCEPT)
     }
 
     if (__ac_check_step(SYMBOL('('))) { 
-        __ac_exec_step(EXECPROC(__exec_expressions)) 
-        __ac_exec_step(SYMBOL(')')) 
+        __ac_exec_step(EXECPROC(expression))
+        __ac_exec_step(SYMBOL(')'))
         __ac_exec_step(ACCEPT)
     }
 
-    __ac_try_step(SYMBOL('$')) 
-    __ac_exec_step(EXECPROC(__exec_variable_name)) 
+    __ac_try_step(SYMBOL('$'))
+    __ac_exec_step(EXECPROC(variable_name))
     return(__ac_end_proc(cmplhndp, &procp));
 }
 
@@ -426,11 +356,11 @@ static int __exec_unit_expression(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_unit_expression, "unit_expression");
 
-    __ac_exec_step(EXECPROC(__exec_variable_expression)) 
+    __ac_exec_step(EXECPROC(variable_expression))
     __ac_exec_stat(BEG_PROCSEQ);
     while (__ac_pocess_next(cmplhndp)) {
-        if (__ac_check_step(ONE_TOKEN("->", "::", ":", ".")) {
-            __ac_exec_step(EXECPROC(__exec_variable_name)) 
+        if (__ac_check_step(ONE_TOKEN("->", "::", ":", ".")) { 
+            __ac_exec_step(EXECPROC(variable_name))
             continue;
         }
 
@@ -438,16 +368,16 @@ static int __exec_unit_expression(p_accmpl_ cmplhndp)
     __ac_exec_stat(END_PROCSEQ);
 
     __ac_try_step(ONE_TOKEN("++", "--")
-    if (__ac_check_step(KEYWORD("as"))) {
-        __ac_exec_step(EXECPROC(__exec_type_name)) 
+    if (__ac_check_step(KEYWORD("as"))) { 
+        __ac_exec_step(EXECPROC(type_name))
     }
 
-    if (__ac_check_step(ONE_TOKEN("=", "+=", "-=", "*=", "/=", "&=", "|=", "<<=", ">>=")) {
-        __ac_exec_step(EXECPROC(__exec_expression)) 
+    if (__ac_check_step(ONE_TOKEN("=", "+=", "-=", "*=", "/=", "&=", "|=", "<<=", ">>=")) { 
+        __ac_exec_step(EXECPROC(expression))
     }
 
-    if (__ac_check_step(ONE_TOKEN("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<", "!=", "+", "-", "*", "/", "^")) {
-        __ac_exec_step(EXECPROC(__exec_expression)) 
+    if (__ac_check_step(ONE_TOKEN("||", "&&", "|", "&", "==", ">=", "<=", ">>", "<<", ">", "<", "!=", "+", "-", "*", "/", "^")) { 
+        __ac_exec_step(EXECPROC(expression))
     }
 
     return(__ac_end_proc(cmplhndp, &procp));
@@ -457,8 +387,8 @@ static int __exec_label_definition(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_label_definition, "label_definition");
 
-    __ac_exec_step(IDENT) 
-    __ac_exec_step(SYMBOL(':')) 
+    __ac_exec_step(IDENT)
+    __ac_exec_step(SYMBOL(':'))
     return(__ac_end_proc(cmplhndp, &procp));
 }
 
@@ -466,37 +396,134 @@ static int __exec_expression_statement(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_expression_statement, "expression_statement");
 
-    if (__ac_check_step(SYMBOL(';'))) { 
+    if (__ac_check_step(SYMBOL(';'))
+      ||__ac_check_step(EXECPROC(variable_declaration))) {
         return(__ac_end_proc(cmplhndp, &procp));
     }
 
-    if (__ac_check_step(EXECPROC(__exec_label_definition))) { 
-        return(__ac_end_proc(cmplhndp, &procp));
+    __ac_exec_step(EXECPROC(expression))
+    __ac_exec_step(SYMBOL(';'))
+    return(__ac_end_proc(cmplhndp, &procp));
+}
+
+static int __exec_keyword_if(p_accmpl_ cmplhndp)
+{
+    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_if, "if");
+
+    __ac_exec_step(SYMBOL('('))
+    __ac_exec_step(EXECPROC(expression))
+    __ac_exec_step(SYMBOL(')'))
+    __ac_exec_step(EXECPROC(block_statement))
+    if (__ac_check_step(KEYWORD("else"))) { 
+        __ac_exec_step(EXECPROC(block_statement))
     }
 
-    if (__ac_check_step(ONE_KEYWORD("break", "continue")) {
-        __ac_exec_step(SYMBOL(';')) 
-        __ac_exec_step(ACCEPT)
+    return(__ac_end_proc(cmplhndp, &procp));
+}
+
+static int __exec_keyword_while(p_accmpl_ cmplhndp)
+{
+    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_while, "while");
+
+    __ac_exec_step(SYMBOL('('))
+    __ac_exec_step(EXECPROC(expression))
+    __ac_exec_step(SYMBOL(')'))
+    __ac_exec_step(EXECPROC(block_statement))
+    return(__ac_end_proc(cmplhndp, &procp));
+}
+
+static int __exec_keyword_do(p_accmpl_ cmplhndp)
+{
+    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_do, "do");
+
+    __ac_exec_step(EXECPROC(block_statement))
+    __ac_exec_step(KEYWORD("while"))
+    __ac_exec_step(SYMBOL('('))
+    __ac_exec_step(EXECPROC(expression))
+    __ac_exec_step(SYMBOL(')'))
+    __ac_exec_step(SYMBOL(';'))
+    return(__ac_end_proc(cmplhndp, &procp));
+}
+
+static int __exec_keyword_switch(p_accmpl_ cmplhndp)
+{
+    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_switch, "switch");
+
+    __ac_exec_step(SYMBOL('('))
+    __ac_exec_step(EXECPROC(expression))
+    __ac_exec_step(SYMBOL(')'))
+    __ac_exec_step(SYMBOL('{'))
+    __ac_exec_stat(BEG_PROCSEQ);
+    while (__ac_pocess_next(cmplhndp)) {
+        if (__ac_check_step(SYMBOL('}'))) { 
+            break;
+        }
+
+        if (__ac_check_step(KEYWORD("default"))) { 
+            __ac_exec_step(SYMBOL(':'))
+            __ac_exec_step(EXECPROC(block_statement))
+            __ac_exec_step(SYMBOL('}'))
+            break;
+        }
+
+        __ac_exec_step(KEYWORD("case"))
+        __ac_exec_step(LITERAL)
+        __ac_exec_step(SYMBOL(':'))
+        __ac_exec_step(EXECPROC(block_statement))
+    }
+    __ac_exec_stat(END_PROCSEQ);
+
+    return(__ac_end_proc(cmplhndp, &procp));
+}
+
+static int __exec_keyword_for(p_accmpl_ cmplhndp)
+{
+    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_for, "for");
+
+    __ac_exec_step(SYMBOL('('))
+    __ac_exec_step(EXECPROC(expression_statement))
+    __ac_exec_stat(BEG_PROCSEQ);
+    while (__ac_pocess_next(cmplhndp)) {
+        if (__ac_check_step(SYMBOL(';'))) { 
+            break;
+        }
+
+        __ac_exec_step(EXECPROC(expression))
+        __ac_exec_step(SYMBOL(';'))
+        break;
+    }
+    __ac_exec_stat(END_PROCSEQ);
+
+    __ac_exec_stat(BEG_PROCSEQ);
+    while (__ac_pocess_next(cmplhndp)) {
+        if (__ac_check_step(SYMBOL(')'))) { 
+            break;
+        }
+
+        __ac_exec_step(EXECPROC(expression))
+        __ac_exec_step(SYMBOL(')'))
+        break;
+    }
+    __ac_exec_stat(END_PROCSEQ);
+
+    __ac_exec_step(EXECPROC(block_statement))
+    return(__ac_end_proc(cmplhndp, &procp));
+}
+
+static int __exec_keyword_foreach(p_accmpl_ cmplhndp)
+{
+    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_foreach, "foreach");
+
+    __ac_exec_step(SYMBOL('('))
+    __ac_exec_step(EXECPROC(expression))
+    __ac_exec_step(KEYWORD("in"))
+    __ac_exec_step(EXECPROC(expression))
+    if (__ac_check_step(SYMBOL(':'))) { 
+        __ac_exec_step(EXECPROC(expression))
     }
 
-    if (__ac_check_step(KEYWORD("goto"))) {
-        __ac_exec_step(IDENT) 
-        __ac_exec_step(SYMBOL(';')) 
-        __ac_exec_step(ACCEPT)
-    }
-
-    if (__ac_check_step(KEYWORD("return"))) {
-        __ac_try_step(EXECPROC(__exec_expression)) 
-        __ac_exec_step(SYMBOL(';')) 
-        __ac_exec_step(ACCEPT)
-    }
-
-    if (__ac_check_step(EXECPROC(__exec_variable_declaration))) { 
-        return(__ac_end_proc(cmplhndp, &procp));
-    }
-
-    __ac_exec_step(EXECPROC(__exec_expression)) 
-    __ac_exec_step(SYMBOL(';')) 
+    __ac_exec_step(SYMBOL(')'))
+    __ac_exec_step(EXECPROC(block_statement))
     return(__ac_end_proc(cmplhndp, &procp));
 }
 
@@ -504,13 +531,13 @@ static int __exec_variable_definition(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_variable_definition, "variable_definition");
 
-    __ac_exec_step(IDENT) 
-    if (__ac_check_step(KEYWORD("as"))) {
-        __ac_exec_step(EXECPROC(__exec_type_name)) 
+    __ac_exec_step(IDENT)
+    if (__ac_check_step(KEYWORD("as"))) { 
+        __ac_exec_step(EXECPROC(type_name))
     }
 
     if (__ac_check_step(SYMBOL('='))) { 
-        __ac_exec_step(EXECPROC(__exec_expression)) 
+        __ac_exec_step(EXECPROC(expression))
     }
 
     return(__ac_end_proc(cmplhndp, &procp));
@@ -521,13 +548,13 @@ static int __exec_object_member(p_accmpl_ cmplhndp)
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_object_member, "object_member");
 
     __ac_try_step(ONE_KEYWORD("public", "private", "protected", "internal", "extern", "sealed", "static", "virtual", "const")
-    if (__ac_check_step(KEYWORD("var"))) {
-        __ac_exec_step(EXECPROC(__exec_variable_definition)) 
-        __ac_exec_step(SYMBOL(';')) 
+    if (__ac_check_step(KEYWORD("var"))) { 
+        __ac_exec_step(EXECPROC(variable_definition))
+        __ac_exec_step(SYMBOL(';'))
         __ac_exec_step(ACCEPT)
     }
 
-    __ac_exec_step(EXECPROC(__exec_function_definition)) 
+    __ac_exec_step(EXECPROC(function_definition))
     return(__ac_end_proc(cmplhndp, &procp));
 }
 
@@ -536,11 +563,11 @@ static int __exec_object_definition(p_accmpl_ cmplhndp)
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_object_definition, "object_definition");
 
     __ac_exec_step(KEYWORD("object"))
-    __ac_exec_step(IDENT) 
+    __ac_exec_step(IDENT)
     if (__ac_check_step(SYMBOL(':'))) { 
         __ac_exec_stat(BEG_PROCSEQ);
         while (__ac_pocess_next(cmplhndp)) {
-            __ac_exec_step(EXECPROC(__exec_type_name)) 
+            __ac_exec_step(EXECPROC(type_name))
             if (__ac_check_step(SYMBOL(','))) { 
                 continue;
             }
@@ -551,12 +578,12 @@ static int __exec_object_definition(p_accmpl_ cmplhndp)
 
     }
 
-    __ac_exec_step(SYMBOL('{')) 
+    __ac_exec_step(SYMBOL('{'))
     __ac_exec_stat(BEG_PROCSEQ);
     while (__ac_pocess_next(cmplhndp)) {
-        __ac_exec_step(EXECPROC(__exec_object_member)) 
+        __ac_exec_step(EXECPROC(object_member))
         if (__ac_check_step(SYMBOL('}'))) { 
-            __ac_exec_step(SYMBOL(';')) 
+            __ac_exec_step(SYMBOL(';'))
             break;
         }
 
@@ -570,15 +597,9 @@ static int __exec_main(p_accmpl_ cmplhndp)
 {
     p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, __exec_main, "main");
 
-    if (__ac_check_step(EXECPROC(__exec_variable_declaration))) { 
-        return(__ac_end_proc(cmplhndp, &procp));
-    }
-
-    if (__ac_check_step(EXECPROC(__exec_object_definition))) { 
-        return(__ac_end_proc(cmplhndp, &procp));
-    }
-
-    if (__ac_check_step(EXECPROC(__exec_function_definition))) { 
+    if (__ac_check_step(EXECPROC(variable_declaration))
+      ||__ac_check_step(EXECPROC(object_definition))
+      ||__ac_check_step(EXECPROC(function_definition))) {
         return(__ac_end_proc(cmplhndp, &procp));
     }
 
