@@ -20,10 +20,16 @@ typedef enum {
     AC_STEP_LITERAL,
 } e_ac_step_;
 
+typedef enum {
+    AC_TYPE_PROC,
+    AC_TYPE_MAIN,
+    AC_TYPE_KEYWORD,
+} e_proc_type;
+
 typedef void *p_accmpl_proc_;
 typedef int(*__exec)(p_accmpl_ cmplhndp);
 
-extern p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, __exec prcfctp, const char *procname);
+extern p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_type type);
 
 AC_EXTERN int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp);
 AC_EXTERN int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, int step, ...);
