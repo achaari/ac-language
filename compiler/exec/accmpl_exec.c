@@ -44,6 +44,7 @@ typedef struct token_ {
         char   chr;
         double dbl;
     } data;
+    int keepdata;
 } ac_token_, *pac_token_;
 
 typedef struct file_ {
@@ -566,8 +567,10 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
 
 static void __ac_reset_token(pac_token_ tokenp)
 {
-    if (tokenp->type == AC_TOKEN_IDENT || tokenp->type == AC_TOKEN_STRING) {
-        mem_free(tokenp->data.strs);
+    if (! tokenp->keepdata) {
+        if (tokenp->type == AC_TOKEN_IDENT || tokenp->type == AC_TOKEN_STRING) {
+            mem_free(tokenp->data.strs);
+        }
     }
 
     mem_reset(tokenp, sizeof(ac_token_));
@@ -577,10 +580,7 @@ static void __ac_reset_token(pac_token_ tokenp)
 static void __ac_copy_token(pac_token_ tokenp, pac_token_ destp)
 {
     mem_copy(tokenp, destp, sizeof(ac_token_));
-
-    if (tokenp->type == AC_TOKEN_IDENT || tokenp->type == AC_TOKEN_STRING) {
-        destp->data.strs = st_dup(tokenp->data.strs);
-    }
+    tokenp->keepdata = TRUE;
 }
 
 static int __ac_next_token(pac_cmpl_ cmplhndp)
@@ -653,14 +653,19 @@ static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata,
 
     if (! __ac_check_one_step(cmplhndp, step, stepdata, retdata)) {
         /* reset token and position */
-        __ac_reset_token(&cmplhndp->curtoken);
-        mem_copy(&curtoken, &cmplhndp->curtoken, sizeof(ac_token_));
-        cmplhndp->flp->curpos = curpos;
+        if (cmplhndp->flp->curpos != curpos) {
+            __ac_reset_token(&cmplhndp->curtoken);
+            mem_copy(&curtoken, &cmplhndp->curtoken, sizeof(ac_token_));
+            cmplhndp->flp->curpos = curpos;
+        }
+        else {
+            cmplhndp->curtoken.keepdata = FALSE;
+        }
         return(FALSE);
     }
 
     /* Clean saved token */
-    __ac_reset_token(&cmplhndp->curtoken);
+    __ac_reset_token(&curtoken);
 
     return(TRUE);
 }
@@ -683,8 +688,10 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
         
         __ac_save_stat(cmplhndp);
 
-        /* Get Step DATA */
-        datap = va_arg(args, PTR);
+        if (step > AC_STEP_END_PROCSEQ) {
+            /* Get Step DATA */
+            datap = va_arg(args, PTR);
+        }
 
         switch (step) {
             case AC_STEP_END_EXEC:
