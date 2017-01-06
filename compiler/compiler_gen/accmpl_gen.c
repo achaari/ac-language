@@ -285,8 +285,8 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
 #endif
 
     fprintf(outputp, "\n/*********** MAIN COMPILER FUNCTION ***********/\n");
-    fprintf(outputp, "int __accmpl_exec_%s()\n{\n", (cmplgenp->module_name) ? cmplgenp->module_name : "module");
-    fprintf(outputp, "    p_accmpl_ cmplhndp = __ac_new_compiler();\n");
+    fprintf(outputp, "int __accmpl_exec_%s(p_accmpl_ cmplhndp)\n{\n", (cmplgenp->module_name) ? cmplgenp->module_name : "module");
+    fprintf(outputp, "    if (cmplhndp == NULLP) cmplhndp = __ac_new_compiler();\n");
     if (cmplgenp->keyword_listp) {
         fprintf(outputp, "\n    __ac_compl_set_keywords(cmplhndp, __keywords, sizeof(__keywords)/sizeof(char*));");
     }
