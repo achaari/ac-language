@@ -106,11 +106,6 @@ p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_t
     return(FALSE);
 }
 
-int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp)
-{
-    return(FALSE);
-}
-
 static void __ac_init_stat(pac_cmpl_ cmplp, int checkstepb)
 {
 }
@@ -128,70 +123,6 @@ static int __ac_get_stat(pac_cmpl_ cmplp)
 static void __ac_set_stat(pac_cmpl_ cmplp, int stat)
 {
 
-}
-
-int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, int step, ...)
-{
-    pac_cmpl_ cmplp = cmplhndp;
-    va_list args;
-    int retstepb = TRUE;
-    PTR datap;
-
-    va_start(args, step);
-
-    __ac_init_stat(cmplhndp, checkstepb);
-
-    while (TRUE) {
-        
-        __ac_save_stat(cmplhndp);
-
-        /* Get Step DATA */
-        datap = va_arg(args, PTR);
-
-        switch (step) {
-            case AC_STEP_END_EXEC:
-                va_end(args);
-                return(__ac_get_stat(cmplhndp));
-
-            case AC_STEP_APPEND_AND:
-                if (!checkstepb) {
-                    ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_AND);
-                    va_end(args);
-                    return(FALSE);
-                }
-                else if (! __ac_get_stat(cmplhndp)) {
-                    /* if previous step is not matched, we stop sequence */
-                    va_end(args);
-                    return(FALSE);
-                }
-                break;
-
-            case AC_STEP_APPEND_OR:
-                if (checkstepb) {
-                    ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_OR);
-                    va_end(args);
-                    return(FALSE);
-                }
-                else if (__ac_get_stat(cmplhndp)) {
-                    /* if previous step is matched, we stop sequence */
-                    va_end(args);
-                    return(TRUE);
-                }
-                break;
-
-            case AC_STEP_IDENT:
-                retstepb = (cmplp->curtoken.type == AC_TOKEN_IDENT);
-                break;
-        }
-
-        __ac_set_stat(cmplhndp, retstepb);
-        
-        /* Get NextStep */
-        step = va_arg(args, int);
-    }
-
-    va_end(args);
-    return(FALSE);
 }
 
 int __ac_end_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
@@ -635,11 +566,21 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
 
 static void __ac_reset_token(pac_token_ tokenp)
 {
-    if (tokenp->type == AC_TOKEN_IDENT) {
+    if (tokenp->type == AC_TOKEN_IDENT || tokenp->type == AC_TOKEN_STRING) {
         mem_free(tokenp->data.strs);
     }
 
     mem_reset(tokenp, sizeof(ac_token_));
+    tokenp->type = AC_TOKEN_NA;
+}
+
+static void __ac_copy_token(pac_token_ tokenp, pac_token_ destp)
+{
+    mem_copy(tokenp, destp, sizeof(ac_token_));
+
+    if (tokenp->type == AC_TOKEN_IDENT || tokenp->type == AC_TOKEN_STRING) {
+        destp->data.strs = st_dup(tokenp->data.strs);
+    }
 }
 
 static int __ac_next_token(pac_cmpl_ cmplhndp)
@@ -654,6 +595,171 @@ static int __ac_next_token(pac_cmpl_ cmplhndp)
     }
 }
 
+static int __ac_validate_matched(pac_cmpl_ cmplhndp, PTR retdata)
+{
+    cmplhndp->curtoken.consumed = TRUE;
+    return(TRUE);
+}
+
+static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata)
+{
+    switch (step) {
+        case AC_STEP_IDENT :
+            if (cmplhndp->curtoken.type == AC_TOKEN_IDENT) {
+                return(__ac_validate_matched(cmplhndp, retdata));
+            }
+            break;
+
+        case AC_STEP_LITERAL:
+            if ((cmplhndp->curtoken.type == AC_TOKEN_INTEGER) ||
+                (cmplhndp->curtoken.type == AC_TOKEN_FLOAT)   ||
+                (cmplhndp->curtoken.type == AC_TOKEN_STRING)  ||
+                (cmplhndp->curtoken.type == AC_TOKEN_CHAR)) {
+                return(__ac_validate_matched(cmplhndp, retdata));
+            }
+            break;
+
+        case AC_STEP_TOKEN:
+            if ((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) && 
+                (cmplhndp->curtoken.data.intl == *(int *) stepdata)) {
+                return(__ac_validate_matched(cmplhndp, retdata));
+            }
+            break;
+
+        case AC_STEP_KEYWORD:
+            if ((cmplhndp->curtoken.type == AC_TOKEN_KEYWORD) &&
+                (cmplhndp->curtoken.data.intl == *(int *)stepdata)) {
+                return(__ac_validate_matched(cmplhndp, retdata));
+            }
+            break;
+    }
+
+    return(FALSE);
+}
+
+static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata)
+{
+    char *curpos; 
+    ac_token_ curtoken;
+        
+    
+    if (_is_end(*cmplhndp->flp->curpos) || !__ac_next_token(cmplhndp)) {
+        return(FALSE);
+    }
+
+    /* Save current token and position */
+    __ac_copy_token(&cmplhndp->curtoken, &curtoken);
+    curpos = cmplhndp->flp->curpos;
+
+    if (! __ac_check_one_step(cmplhndp, step, stepdata, retdata)) {
+        /* reset token and position */
+        __ac_reset_token(&cmplhndp->curtoken);
+        mem_copy(&curtoken, &cmplhndp->curtoken, sizeof(ac_token_));
+        cmplhndp->flp->curpos = curpos;
+        return(FALSE);
+    }
+
+    /* Clean saved token */
+    __ac_reset_token(&cmplhndp->curtoken);
+
+    return(TRUE);
+}
+
+
+int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
+{
+    pac_cmpl_ cmplp = cmplhndp;
+    __exec prcfctp;
+    va_list args;
+    int retstepb = TRUE;
+    PTR datap;
+    char *strs;
+
+    va_start(args, step);
+
+    __ac_init_stat(cmplhndp, checkstepb);
+
+    while (TRUE) {
+        
+        __ac_save_stat(cmplhndp);
+
+        /* Get Step DATA */
+        datap = va_arg(args, PTR);
+
+        switch (step) {
+            case AC_STEP_END_EXEC:
+                va_end(args);
+                return(__ac_get_stat(cmplhndp));
+
+            case AC_STEP_APPEND_AND:
+                if (!checkstepb) {
+                    ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_AND);
+                    va_end(args);
+                    return(FALSE);
+                }
+                else if (! __ac_get_stat(cmplhndp)) {
+                    /* if previous step is not matched, we stop sequence */
+                    va_end(args);
+                    return(FALSE);
+                }
+                break;
+
+            case AC_STEP_APPEND_OR:
+                if (checkstepb) {
+                    ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_OR);
+                    va_end(args);
+                    return(FALSE);
+                }
+                else if (__ac_get_stat(cmplhndp)) {
+                    /* if previous step is matched, we stop sequence */
+                    va_end(args);
+                    return(TRUE);
+                }
+                break;
+
+            case AC_STEP_EXECPROC:
+                prcfctp = va_arg(args, __exec);
+                if (prcfctp == NULLP) {
+                    va_end(args);
+                    return(FALSE);
+                }
+
+                retstepb = (*prcfctp)(cmplhndp);
+                break;
+
+            case AC_STEP_KEYWORD:
+                retstepb = FALSE;
+                strs = va_arg(args, char *);
+                while (!retstepb && strs != NULLP) {
+
+                    retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, NULLP);
+
+                    /* Next Keyword */
+                    strs = va_arg(args, char *);
+                }
+                break;
+
+            default :
+                retstepb = FALSE;
+        }
+
+        __ac_set_stat(cmplhndp, retstepb);
+        
+        /* Get NextStep */
+        step = va_arg(args, int);
+    }
+
+    va_end(args);
+    return(FALSE);
+}
+
+int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp)
+{
+    int retfct = (*prcfctp)(cmplhndp);
+
+    return(FALSE);
+}
+
 #ifdef __AC_TEST__
 extern int __accmpl_exec_module();
 int main() 
@@ -664,10 +770,10 @@ int main()
 
     pac_cmpl_ cmpl = __ac_new_compiler();
 
+    __ac_openfile(cmpl, files);
+
     /* Test Module */
     __accmpl_exec_module(cmpl);
-
-    __ac_openfile(cmpl, files);
 
     logp = fopen(logs, "w");
 
