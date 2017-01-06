@@ -628,9 +628,9 @@ static int __exec_main(p_accmpl_ cmplhndp)
 #endif
 
 /*********** MAIN COMPILER FUNCTION ***********/
-int __accmpl_exec_module()
+int __accmpl_exec_module(p_accmpl_ cmplhndp)
 {
-    p_accmpl_ cmplhndp = __ac_new_compiler();
+    if (cmplhndp == NULLP) cmplhndp = __ac_new_compiler();
 
     __ac_compl_set_keywords(cmplhndp, __keywords, sizeof(__keywords)/sizeof(char*));
     __ac_compl_set_tokens(cmplhndp, __tokens, sizeof(__tokens)/sizeof(char*));
