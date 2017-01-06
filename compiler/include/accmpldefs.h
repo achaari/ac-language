@@ -32,7 +32,7 @@ typedef int(*__exec)(p_accmpl_ cmplhndp);
 AC_EXTERN p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_type type);
 
 AC_EXTERN int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp);
-AC_EXTERN int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, int step, ...);
+AC_EXTERN int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...);
 AC_EXTERN int __ac_end_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp);
 AC_EXTERN int __ac_stop_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp);
 AC_EXTERN int __ac_pocess_next(p_accmpl_ cmplhndp);
