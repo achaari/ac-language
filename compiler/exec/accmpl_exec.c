@@ -25,9 +25,12 @@ typedef enum {
     AC_TOKEN_NA = 0,
     AC_TOKEN_KEYWORD,
     AC_TOKEN_TOKEN,
+    AC_TOKEN_SYMBOL,
     AC_TOKEN_IDENT,   
     AC_TOKEN_STRING,
     AC_TOKEN_CHAR,
+    AC_TOKEN_INTEGER,
+    AC_TOKEN_FLOAT,
 } e_ac_token_;
 
 typedef struct token_ {
@@ -36,9 +39,10 @@ typedef struct token_ {
     int         innewline;
     int         consumed;
     union {
-        char *strs;
-        int  intl;
-        char chr;
+        char   *strs;
+        int    intl;
+        char   chr;
+        double dbl;
     } data;
 } ac_token_, *pac_token_;
 
@@ -390,36 +394,43 @@ static char *__ac_print_char(char chr)
 
 static int __ac_get_next_token(pac_cmpl_ cmplhndp)
 {
-    int escape = FALSE, reuseb = FALSE;
+    int escape = FALSE, reuseb = FALSE, isfloatb = FALSE;
     char push, chr, *tmppos, *idents;
 
     if (_is_end(*cmplhndp->flp->curpos)) {
         return(FALSE);
     }
     
-    if (*cmplhndp->flp->curpos == '\\') {
-        cmplhndp->flp->curpos++;
-        escape = TRUE;
-    }
+    while (TRUE) {
+        /* Skip emply lines */
+        if (*cmplhndp->flp->curpos == '\\') {
+            cmplhndp->flp->curpos++;
+            escape = TRUE;
+        }
 
-    if (*cmplhndp->flp->curpos == '\r') {
-        cmplhndp->flp->curpos++;
-    }
+        if (*cmplhndp->flp->curpos == '\r') {
+            cmplhndp->flp->curpos++;
+        }
 
-    if (*cmplhndp->flp->curpos == '\n') {
-        __ac_newline(cmplhndp, !escape);
-        cmplhndp->flp->curpos++;
-        escape = FALSE; 
-    }
+        if (*cmplhndp->flp->curpos == '\n') {
+            __ac_newline(cmplhndp, !escape);
+            cmplhndp->flp->curpos++;
+            escape = FALSE;
+            continue;
+        }
 
-    if (escape) {
-        ac_error(AC_ILLEGAL_ESC_SEQUENCE);
-        return(FALSE);
+        if (escape) {
+            ac_error(AC_ILLEGAL_ESC_SEQUENCE);
+            return(FALSE);
+        }
+
+        break;
     }
 
     /* Get First Non whitespace */
     while (_is_blank(*cmplhndp->flp->curpos)) {
         cmplhndp->flp->curpos++;
+        reuseb = TRUE;
     }
 
     /* Escape comments */
@@ -464,6 +475,10 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
 
     if (reuseb) {
         return(__ac_get_next_token(cmplhndp));
+    }
+
+    if (_is_end(*cmplhndp->flp->curpos)) {
+        return(FALSE);
     }
 
     /* Initialize new token */
@@ -577,15 +592,42 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
         }
     }
     else if (_is_digit(*cmplhndp->flp->curpos)) {
-        cmplhndp->flp->curpos++;
-        return(__ac_get_next_token(cmplhndp));
+        tmppos = cmplhndp->flp->curpos;
+
+        while (_is_digit(*cmplhndp->flp->curpos)) {
+            cmplhndp->flp->curpos++;
+        }
+
+        if (*cmplhndp->flp->curpos == '.') {
+            isfloatb = TRUE;
+            cmplhndp->flp->curpos++;
+
+            while (_is_digit(*cmplhndp->flp->curpos)) {
+                cmplhndp->flp->curpos++;
+            }
+        }
+
+        push = *cmplhndp->flp->curpos;
+        *cmplhndp->flp->curpos = '\0';
+
+        if (isfloatb) {
+            cmplhndp->curtoken.type = AC_TOKEN_FLOAT;
+            cmplhndp->curtoken.data.dbl = atof(tmppos);
+        }
+        else {
+            cmplhndp->curtoken.type      = AC_TOKEN_INTEGER;
+            cmplhndp->curtoken.data.intl = atoi(tmppos);
+        }
+
+        *cmplhndp->flp->curpos = push;
     }
     else if (__ac_check_token(cmplhndp, &cmplhndp->curtoken.data.intl)) {
         cmplhndp->curtoken.type = AC_TOKEN_TOKEN;
     }
     else {
+        cmplhndp->curtoken.type = AC_TOKEN_SYMBOL; 
+        cmplhndp->curtoken.data.chr = *cmplhndp->flp->curpos;
         cmplhndp->flp->curpos++;
-        return(__ac_get_next_token(cmplhndp));
     }
 
     return(TRUE);
@@ -640,11 +682,20 @@ int main()
             case AC_TOKEN_TOKEN:
                 fprintf(logp, "Token : '%s' (%d) \n", cmpl->token[cmpl->curtoken.data.intl], cmpl->flp->line);
                 break;
+            case AC_TOKEN_SYMBOL:
+                fprintf(logp, "Symbol : '%c' (%d) \n", cmpl->curtoken.data.chr, cmpl->flp->line);
+                break;
             case AC_TOKEN_STRING:
                 fprintf(logp, "String : \"%s\" (%d) \n", cmpl->curtoken.data.strs, cmpl->flp->line);
                 break;
             case AC_TOKEN_CHAR:
                 fprintf(logp, "Char : '%s' (%d) \n", __ac_print_char(cmpl->curtoken.data.chr), cmpl->flp->line);
+                break;
+            case AC_TOKEN_INTEGER:
+                fprintf(logp, "Integer : '%d' (%d) \n", cmpl->curtoken.data.intl, cmpl->flp->line);
+                break;
+            case AC_TOKEN_FLOAT:
+                fprintf(logp, "Float : '%f' (%d) \n", cmpl->curtoken.data.dbl, cmpl->flp->line);
                 break;
         }
 
