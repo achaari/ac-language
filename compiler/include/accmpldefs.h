@@ -29,7 +29,7 @@ typedef enum {
 typedef void *p_accmpl_proc_;
 typedef int(*__exec)(p_accmpl_ cmplhndp);
 
-extern p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_type type);
+AC_EXTERN p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_type type);
 
 AC_EXTERN int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp);
 AC_EXTERN int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, int step, ...);
@@ -46,16 +46,28 @@ AC_EXTERN int __ac_pocess_next(p_accmpl_ cmplhndp);
 #define OR                     ,AC_STEP_APPEND_OR,
 #define KEY(a)                 #a, __exec_keyword_##a
 #define ENDSTEP                NULLP
+#define NODATA                 NULLP
 
 /* AC Steps Definition */
-#define BEG_PROCSEQ            AC_STEP_BEG_PROCSEQ
-#define END_PROCSEQ            AC_STEP_END_PROCSEQ
-#define EXECPROC(a)            AC_STEP_EXECPROC, __exec_##a
-#define EXECKEYWORD(a, ...)    AC_STEP_EXECKEYWORD, a, __VA_ARGS__, ENDSTEP
-#define KEYWORD(a, ...)        AC_STEP_KEYWORD, a, __VA_ARGS__, ENDSTEP
-#define TOKEN(a, ...)          AC_STEP_TOKEN, a, __VA_ARGS__, ENDSTEP
-#define SYMBOL(a)              AC_STEP_SYMBOL, a         
-#define IDENT                  AC_STEP_IDENT
-#define LITERAL                AC_STEP_LITERAL
+#define BEG_PROCSEQ_DATA(d)            AC_STEP_BEG_PROCSEQ, d
+#define END_PROCSEQ_DATA(d)            AC_STEP_END_PROCSEQ, d
+#define EXECPROC_DATA(d, a)            AC_STEP_EXECPROC, d, __exec_##a
+#define EXECKEYWORD_DATA(d, a, ...)    AC_STEP_EXECKEYWORD, d, a, __VA_ARGS__, ENDSTEP
+#define KEYWORD_DATA(d, a, ...)        AC_STEP_KEYWORD, d, a, __VA_ARGS__, ENDSTEP
+#define TOKEN_DATA(d, a, ...)          AC_STEP_TOKEN, d, a, __VA_ARGS__, ENDSTEP
+#define SYMBOL_DATA(d, a)              AC_STEP_SYMBOL, d, a         
+#define IDENT_DATA(d)                  AC_STEP_IDENT, d
+#define LITERAL_DATA(d)                AC_STEP_LITERAL, d
+
+/* AC Steps Definition */
+#define BEG_PROCSEQ                    BEG_PROCSEQ_DATA(NODATA)
+#define END_PROCSEQ                    BEG_PROCSEQ_DATA(NODATA)
+#define EXECPROC(a)                    EXECPROC_DATA(NODATA, a)
+#define EXECKEYWORD(a, ...)            EXECKEYWORD_DATA(NODATA, a, __VA_ARGS__)
+#define KEYWORD(a, ...)                KEYWORD_DATA(NODATA, a, __VA_ARGS__)
+#define TOKEN(a, ...)                  TOKEN_DATA(NODATA, a, __VA_ARGS__)
+#define SYMBOL(a)                      SYMBOL_DATA(NODATA, a)         
+#define IDENT                          IDENT_DATA(NODATA)
+#define LITERAL                        LITERAL_DATA(NODATA)
 
 #endif
