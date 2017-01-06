@@ -48,9 +48,10 @@ AC_EXTERN int __ac_pocess_next(p_accmpl_ cmplhndp);
 #define ENDSTEP                NULLP
 #define NODATA                 NULLP
 
+#define BEG_PROCSEQ            AC_STEP_BEG_PROCSEQ
+#define END_PROCSEQ            AC_STEP_END_PROCSEQ
+
 /* AC Steps Definition */
-#define BEG_PROCSEQ_DATA(d)            AC_STEP_BEG_PROCSEQ, d
-#define END_PROCSEQ_DATA(d)            AC_STEP_END_PROCSEQ, d
 #define EXECPROC_DATA(d, a)            AC_STEP_EXECPROC, d, __exec_##a
 #define EXECKEYWORD_DATA(d, a, ...)    AC_STEP_EXECKEYWORD, d, a, __VA_ARGS__, ENDSTEP
 #define KEYWORD_DATA(d, a, ...)        AC_STEP_KEYWORD, d, a, __VA_ARGS__, ENDSTEP
@@ -60,8 +61,6 @@ AC_EXTERN int __ac_pocess_next(p_accmpl_ cmplhndp);
 #define LITERAL_DATA(d)                AC_STEP_LITERAL, d
 
 /* AC Steps Definition */
-#define BEG_PROCSEQ                    BEG_PROCSEQ_DATA(NODATA)
-#define END_PROCSEQ                    BEG_PROCSEQ_DATA(NODATA)
 #define EXECPROC(a)                    EXECPROC_DATA(NODATA, a)
 #define EXECKEYWORD(a, ...)            EXECKEYWORD_DATA(NODATA, a, __VA_ARGS__)
 #define KEYWORD(a, ...)                KEYWORD_DATA(NODATA, a, __VA_ARGS__)
