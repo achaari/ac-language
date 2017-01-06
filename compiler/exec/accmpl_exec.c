@@ -24,6 +24,7 @@
 typedef enum {
     AC_TOKEN_NA = 0,
     AC_TOKEN_KEYWORD,
+    AC_TOKEN_TOKEN,
     AC_TOKEN_IDENT,   
     AC_TOKEN_STRING,
     AC_TOKEN_CHAR,
@@ -284,6 +285,73 @@ static int __ac_is_keyword(pac_cmpl_ cmplhndp, char *idents, int *indexl)
     return(FALSE);
 }
 
+static int __ac_check_token(pac_cmpl_ cmplhndp, int *indexl)
+{
+    int i = 0, foundi = -1, low = 0, high = cmplhndp->nbtoken - 1;
+
+    char checkchr = *cmplhndp->flp->curpos;
+
+    if (cmplhndp->token == NULLP) {
+        return(FALSE);
+    }
+
+    while (TRUE) {
+        i = (low + high) / 2;
+
+        if (cmplhndp->token[i][0] == checkchr) {
+            foundi = i;
+            break;
+        }
+        else if (cmplhndp->token[i][0] > checkchr) {
+            low = i + 1;
+            if (low > high) {
+                break;
+            }
+        }
+        else if (cmplhndp->token[i][0] < checkchr) {
+            high = i - 1;
+            if (high < low) {
+                break;
+            }
+        }
+    }
+
+    if (foundi < 0) {
+        return(FALSE);
+    }
+
+    /* Get First Token */
+    i = foundi;
+    while (i >= 0) {
+        if (! strncmp(cmplhndp->token[i], cmplhndp->flp->curpos, strlen(cmplhndp->token[i]))) {
+            *indexl = i;
+            cmplhndp->flp->curpos += strlen(cmplhndp->token[i]);
+            return(TRUE);
+        }
+        else if (cmplhndp->token[i][0] != checkchr) {
+            break;
+        }
+
+        i--;
+    }
+
+    i = foundi + 1;
+    while (i < cmplhndp->nbtoken) {
+        if (! strncmp(cmplhndp->token[i], cmplhndp->flp->curpos, strlen(cmplhndp->token[i]))) {
+            *indexl = i;
+            cmplhndp->flp->curpos += strlen(cmplhndp->token[i]);
+            return(TRUE);
+        }
+        else if (cmplhndp->token[i][0] != checkchr) {
+            break;
+        }
+
+        i++;
+    }
+
+    return(FALSE);
+}
+
 static char __get_seq_str(char chr)
 {
     switch (chr) {
@@ -508,6 +576,13 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
             cmplhndp->curtoken.data.strs = idents;
         }
     }
+    else if (_is_digit(*cmplhndp->flp->curpos)) {
+        cmplhndp->flp->curpos++;
+        return(__ac_get_next_token(cmplhndp));
+    }
+    else if (__ac_check_token(cmplhndp, &cmplhndp->curtoken.data.intl)) {
+        cmplhndp->curtoken.type = AC_TOKEN_TOKEN;
+    }
     else {
         cmplhndp->flp->curpos++;
         return(__ac_get_next_token(cmplhndp));
@@ -562,6 +637,9 @@ int main()
             case AC_TOKEN_KEYWORD:
                 fprintf(logp, "Keyword : %s (%d) \n", cmpl->keyword[cmpl->curtoken.data.intl], cmpl->flp->line);
                 break; 
+            case AC_TOKEN_TOKEN:
+                fprintf(logp, "Token : '%s' (%d) \n", cmpl->token[cmpl->curtoken.data.intl], cmpl->flp->line);
+                break;
             case AC_TOKEN_STRING:
                 fprintf(logp, "String : \"%s\" (%d) \n", cmpl->curtoken.data.strs, cmpl->flp->line);
                 break;
