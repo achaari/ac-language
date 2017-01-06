@@ -57,9 +57,18 @@ typedef struct file_ {
     char *deeppos;
 } ac_file_, *pac_file_;
 
+typedef struct stat_ {
+    int stat;
+    int checkstep;
+    struct stat_ *nextp;
+    struct stat_ *prevp;
+} ac_stat_, *pac_stat_;
+
 typedef struct cmpl_ {
+    int        modedebug;
     pac_file_  flp;
     ac_token_  curtoken;
+    pac_stat_  statp;
     const char **keyword;
     int        nbkeyword;
     const char **token;
@@ -107,23 +116,38 @@ p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_t
     return(FALSE);
 }
 
-static void __ac_init_stat(pac_cmpl_ cmplp, int checkstepb)
+static int __ac_init_stat(pac_cmpl_ cmplp, int checkstepb)
 {
+    pac_stat_ statp = mem_get(sizeof(ac_stat_));
+
+    if (statp == NULLP) return(FALSE);
+
+    statp->checkstep = checkstepb;
+
+    if (cmplp->statp) {
+        cmplp->statp->nextp = statp;
+        statp->prevp = cmplp->statp;
+    }
+
+    cmplp->statp = statp;
+    return(TRUE);
 }
 
-static void __ac_save_stat(pac_cmpl_ cmplp)
+static int __ac_end_stat(pac_cmpl_ cmplp)
 {
+    int stat = cmplp->statp->stat;
 
-}
+    cmplp->statp = cmplp->statp->prevp;
 
-static int __ac_get_stat(pac_cmpl_ cmplp)
-{
-    return(FALSE);
+    mem_free(cmplp->statp->nextp);
+    cmplp->statp->nextp = NULLP;
+
+    return(stat);
 }
 
 static void __ac_set_stat(pac_cmpl_ cmplp, int stat)
 {
-
+    cmplp->statp->stat = stat;
 }
 
 int __ac_end_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
@@ -188,17 +212,17 @@ static int __ac_openfile(pac_cmpl_ cmplhndp, const char *filename)
     return(TRUE);
 }
 
-static int __ac_is_keyword(pac_cmpl_ cmplhndp, char *idents, int *indexl)
+static int __ac_is_str(char *idents, int *indexl, const char **tab, int len)
 {
-    int i = 0, cmp, low = 0, high = cmplhndp->nbkeyword - 1;
+    int i = 0, cmp, low = 0, high = len - 1;
 
-    if (cmplhndp->keyword == NULLP) {
+    if (tab == NULLP) {
         return(FALSE);
     }
 
     while (TRUE) {
         i = (low + high) / 2;
-        cmp = strcmp(idents, cmplhndp->keyword[i]);
+        cmp = strcmp(idents, tab[i]);
 
         if (! cmp) {
             *indexl = i;
@@ -219,6 +243,16 @@ static int __ac_is_keyword(pac_cmpl_ cmplhndp, char *idents, int *indexl)
     }
 
     return(FALSE);
+}
+
+static int __ac_is_keyword(pac_cmpl_ cmplhndp, char *idents, int *indexl)
+{
+    return(__ac_is_str(idents, indexl, cmplhndp->keyword, cmplhndp->nbkeyword));
+}
+
+static int __ac_is_token(pac_cmpl_ cmplhndp, char *idents, int *indexl)
+{
+    return(__ac_is_str(idents, indexl, cmplhndp->token, cmplhndp->nbtoken));
 }
 
 static int __ac_check_token(pac_cmpl_ cmplhndp, int *indexl)
@@ -620,14 +654,44 @@ static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata
             break;
 
         case AC_STEP_TOKEN:
-            if ((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) && 
-                (cmplhndp->curtoken.data.intl == *(int *) stepdata)) {
+            if (cmplhndp->modedebug) {
+                if ((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) &&
+                    iseqstr(cmplhndp->token[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
+
+                    return(__ac_validate_matched(cmplhndp, retdata));
+                }
+            }
+            else if ((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) && 
+                     (cmplhndp->curtoken.data.intl == *(int *) stepdata)) {
                 return(__ac_validate_matched(cmplhndp, retdata));
             }
             break;
 
+        case AC_STEP_SYMBOL:
+            if (cmplhndp->modedebug) {
+                if (((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) && iseqstr(cmplhndp->token[cmplhndp->curtoken.data.intl], (char *)stepdata)) ||
+                    ((cmplhndp->curtoken.type == AC_TOKEN_SYMBOL) && (cmplhndp->curtoken.data.chr == *(char *)stepdata))) {
+
+                    return(__ac_validate_matched(cmplhndp, retdata));
+                }
+            } 
+            else if (strlen(cmplhndp->token[*(int *)stepdata]) == 1) {
+                if (((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) && (cmplhndp->curtoken.data.intl == *(int *)stepdata)) ||
+                    ((cmplhndp->curtoken.type == AC_TOKEN_SYMBOL) && (cmplhndp->curtoken.data.chr == *cmplhndp->token[*(int *)stepdata]))) {
+
+                    return(__ac_validate_matched(cmplhndp, retdata));
+                }
+            }
+
         case AC_STEP_KEYWORD:
-            if ((cmplhndp->curtoken.type == AC_TOKEN_KEYWORD) &&
+            if (cmplhndp->modedebug) {
+                if ((cmplhndp->curtoken.type == AC_TOKEN_KEYWORD) &&
+                    iseqstr(cmplhndp->keyword[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
+
+                    return(__ac_validate_matched(cmplhndp, retdata));
+                }
+            }
+            else if ((cmplhndp->curtoken.type == AC_TOKEN_KEYWORD) &&
                 (cmplhndp->curtoken.data.intl == *(int *)stepdata)) {
                 return(__ac_validate_matched(cmplhndp, retdata));
             }
@@ -676,9 +740,11 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
     pac_cmpl_ cmplp = cmplhndp;
     __exec prcfctp;
     va_list args;
-    int retstepb = TRUE;
+    int retstepb = TRUE, intl;
     PTR datap;
-    char *strs;
+    char *strs, chr[2];
+
+    mem_reset(chr, sizeof(chr));
 
     va_start(args, step);
 
@@ -686,7 +752,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
 
     while (TRUE) {
         
-        __ac_save_stat(cmplhndp);
+        retstepb = TRUE;
 
         if (step > AC_STEP_END_PROCSEQ) {
             /* Get Step DATA */
@@ -696,18 +762,18 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
         switch (step) {
             case AC_STEP_END_EXEC:
                 va_end(args);
-                return(__ac_get_stat(cmplhndp));
+                return(__ac_end_stat(cmplhndp));
 
             case AC_STEP_APPEND_AND:
                 if (!checkstepb) {
                     ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_AND);
                     va_end(args);
-                    return(FALSE);
+                    return(__ac_end_stat(cmplhndp));
                 }
-                else if (! __ac_get_stat(cmplhndp)) {
+                else if (! cmplp->statp->stat) {
                     /* if previous step is not matched, we stop sequence */
                     va_end(args);
-                    return(FALSE);
+                    return(__ac_end_stat(cmplhndp));
                 }
                 break;
 
@@ -715,12 +781,12 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 if (checkstepb) {
                     ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_OR);
                     va_end(args);
-                    return(FALSE);
+                    return(__ac_end_stat(cmplhndp));
                 }
-                else if (__ac_get_stat(cmplhndp)) {
+                else if (cmplp->statp->stat) {
                     /* if previous step is matched, we stop sequence */
                     va_end(args);
-                    return(TRUE);
+                    return(__ac_end_stat(cmplhndp));
                 }
                 break;
 
@@ -738,9 +804,31 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 retstepb = FALSE;
                 strs = va_arg(args, char *);
                 while (!retstepb && strs != NULLP) {
-
+                    
                     retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, NULLP);
+                    
+                    /* Next Keyword */
+                    strs = va_arg(args, char *);
+                }
+                break;
 
+            case AC_STEP_IDENT:
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_IDENT, NULLP, NULLP);
+                break;
+
+            case AC_STEP_SYMBOL:
+                chr[0] = va_arg(args, char);
+
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_SYMBOL, chr, NULLP);
+                break;
+
+            case AC_STEP_TOKEN:
+                retstepb = FALSE;
+                strs = va_arg(args, char *);
+                while (!retstepb && strs != NULLP) {
+
+                    retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, strs, NULLP);
+                    
                     /* Next Keyword */
                     strs = va_arg(args, char *);
                 }
@@ -757,14 +845,24 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
     }
 
     va_end(args);
-    return(FALSE);
+    return(__ac_end_stat(cmplhndp));
 }
 
 int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp)
 {
-    int retfct = (*prcfctp)(cmplhndp);
+    int retfct;
+    pac_cmpl_ cmplp = cmplhndp;
 
-    return(FALSE);
+    __ac_init_stat(cmplhndp, TRUE);
+
+    cmplp->modedebug = TRUE;
+
+    retfct  = (*prcfctp)(cmplhndp);
+
+    mem_free(cmplp->statp);
+    cmplp->statp = NULLP;
+
+    return(retfct);
 }
 
 #ifdef __AC_TEST__
