@@ -654,46 +654,51 @@ static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata
             break;
 
         case AC_STEP_TOKEN:
-            if (cmplhndp->modedebug) {
-                if ((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) &&
-                    iseqstr(cmplhndp->token[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
-
+            if (cmplhndp->curtoken.type == AC_TOKEN_TOKEN) {
+                if (cmplhndp->modedebug) {
+                    if (iseqstr(cmplhndp->token[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
+                        return(__ac_validate_matched(cmplhndp, retdata));
+                    }
+                }
+                else if (cmplhndp->curtoken.data.intl == *(int *)stepdata) {
                     return(__ac_validate_matched(cmplhndp, retdata));
                 }
-            }
-            else if ((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) && 
-                     (cmplhndp->curtoken.data.intl == *(int *) stepdata)) {
-                return(__ac_validate_matched(cmplhndp, retdata));
             }
             break;
 
         case AC_STEP_SYMBOL:
-            if (cmplhndp->modedebug) {
-                if (((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) && iseqstr(cmplhndp->token[cmplhndp->curtoken.data.intl], (char *)stepdata)) ||
-                    ((cmplhndp->curtoken.type == AC_TOKEN_SYMBOL) && (cmplhndp->curtoken.data.chr == *(char *)stepdata))) {
-
-                    return(__ac_validate_matched(cmplhndp, retdata));
+            if (cmplhndp->curtoken.type == AC_TOKEN_SYMBOL) {
+                if (cmplhndp->modedebug) {
+                    if (cmplhndp->curtoken.data.chr == *(char *)stepdata) {
+                        return(__ac_validate_matched(cmplhndp, retdata));
+                    }
                 }
-            } 
-            else if (strlen(cmplhndp->token[*(int *)stepdata]) == 1) {
-                if (((cmplhndp->curtoken.type == AC_TOKEN_TOKEN) && (cmplhndp->curtoken.data.intl == *(int *)stepdata)) ||
-                    ((cmplhndp->curtoken.type == AC_TOKEN_SYMBOL) && (cmplhndp->curtoken.data.chr == *cmplhndp->token[*(int *)stepdata]))) {
-
+                else if (cmplhndp->curtoken.data.chr == *cmplhndp->token[*(int *)stepdata] && strlen(cmplhndp->token[*(int *)stepdata]) == 1) {
                     return(__ac_validate_matched(cmplhndp, retdata));
                 }
             }
+            else if (cmplhndp->curtoken.type == AC_TOKEN_TOKEN) {
+                if (cmplhndp->modedebug) {
+                    if (iseqstr(cmplhndp->token[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
+                        return(__ac_validate_matched(cmplhndp, retdata));
+                    }
+                }
+                else if (cmplhndp->curtoken.data.intl == *(int *)stepdata && strlen(cmplhndp->token[*(int *)stepdata]) == 1) {
+                    return(__ac_validate_matched(cmplhndp, retdata));
+                }
+            }
+            break;
 
         case AC_STEP_KEYWORD:
-            if (cmplhndp->modedebug) {
-                if ((cmplhndp->curtoken.type == AC_TOKEN_KEYWORD) &&
-                    iseqstr(cmplhndp->keyword[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
-
+            if (cmplhndp->curtoken.type == AC_TOKEN_KEYWORD) {
+                if (cmplhndp->modedebug) {
+                    if (iseqstr(cmplhndp->keyword[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
+                        return(__ac_validate_matched(cmplhndp, retdata));
+                    }
+                }
+                else if (cmplhndp->curtoken.data.intl == *(int *)stepdata) {
                     return(__ac_validate_matched(cmplhndp, retdata));
                 }
-            }
-            else if ((cmplhndp->curtoken.type == AC_TOKEN_KEYWORD) &&
-                (cmplhndp->curtoken.data.intl == *(int *)stepdata)) {
-                return(__ac_validate_matched(cmplhndp, retdata));
             }
             break;
     }
@@ -740,7 +745,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
     pac_cmpl_ cmplp = cmplhndp;
     __exec prcfctp;
     va_list args;
-    int retstepb = TRUE, intl;
+    int retstepb = TRUE;
     PTR datap;
     char *strs, chr[2];
 
