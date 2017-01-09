@@ -80,12 +80,12 @@
     
 
 .block_statement : 
+    [ <label_definition>  ;]  
+    [ ^(if, while, do, switch, for, foreach) ;]     
     [ ~(break,continue) ';' ;]   
     [ ~goto ident ';' ;]
-    [ ~return [<expression>] ';' ;]
-    [ ^(if, while, do, switch, for, foreach) ;] 
-    [ '{' { ['}' ,] <block_statement> * } ;]
-    [ <label_definition>  ;]            
+    [ ~return [<expression>] ';' ;]    
+    [ '{' { ['}' ,] <block_statement> * } ;]             
     <expression_statement> 
     ;
 
@@ -98,7 +98,7 @@
 
 /* CmplProc entry-point */
 .variable_declaration : ~(local,global) <variable_definition> [',' <variable_definition> ;] ';' ;
-.function_definition  : ~function ident '(' { [')' ,] { ident [')' ,] ',' * } } [';' ;] '{' { ['}' ,] <block_statement> * } ;
+.function_definition  : ~function ident '(' [ident { [',' ident *] } ] ')' [';' ;] '{' { ['}' ,] <block_statement> * } ;
 .object_definition    : ~object ident [':' { <type_name> [',' *] } ] '{' { <object_member> ['}' ';' ,] * } ;
 
 /* Main CmplProc */
