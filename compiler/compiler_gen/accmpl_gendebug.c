@@ -44,6 +44,7 @@ static char *ac_get_str(pac_data_list_ strlistp, int index)
 static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab, int *indx, int level, s_stat_desc_ stat, FILE *outputp)
 {
     const char *__tabs = "                                                                            ";
+    static e_step_def_ prevstp;
     int tablidx = strlen(__tabs) - level * 4;
     e_step_ext_ extl;
     e_step_def_ extdef;
@@ -146,7 +147,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
                 }
             }
 
-            if (pxtab[(*indx) - 1] != STEP_DEF_PROCSEQ_RECALL && pxtab[(*indx) - 1] != STEP_DEF_PROCSEQ_BREAK) {
+            if (prevstp != STEP_DEF_PROCSEQ_RECALL && prevstp != STEP_DEF_PROCSEQ_BREAK) {
                 fprintf(outputp, "%sbreak;\n%s}\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
             }
             else {
@@ -196,8 +197,12 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             }
 
             /* Do not execute AND operator */
+            prevstp = stepdef;
             return;
     }
+
+    /* Set previous step */
+    prevstp = stepdef;
 
     if (!stat && ac_is_simple_step(stepdef)) {
         /* Process AND operator for consecutiv simple steps */
