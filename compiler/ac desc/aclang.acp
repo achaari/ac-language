@@ -57,7 +57,7 @@
     
 .expression : 
     [ %("++", "--") <expression> ; ]  /* expression Prefix  */
-    [ %"!-+&*~" <unit_expression> ]
+    [ %"!-+&*~" ] <unit_expression> 
     [ ~(is, extend) <type_name> ]
     [ '?' <expression> ':' <expression> ]
     ;
@@ -98,7 +98,7 @@
 
 /* CmplProc entry-point */
 .variable_declaration : ~(local,global) <variable_definition> [',' <variable_definition> ;] ';' ;
-.function_definition  : ~function ident '(' [ident { [',' ident *] } ] ')' [';' ;] '{' { ['}' ,] <block_statement> * } ;
+.function_definition  : ~function ident '(' [ident { [',' ident *] } ] ')' [';' ;] '{' { [<block_statement> *] } '}' ;
 .object_definition    : ~object ident [':' { <type_name> [',' *] } ] '{' { <object_member> ['}' ';' ,] * } ;
 
 /* Main CmplProc */
