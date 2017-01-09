@@ -162,7 +162,7 @@ int __ac_stop_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
 
 int __ac_pocess_next(p_accmpl_ cmplhndp)
 {
-    return(FALSE);
+    return(TRUE);
 }
 
 static void __ac_newline(pac_cmpl_ cmplhndp, int resetline)
@@ -805,13 +805,30 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 retstepb = (*prcfctp)(cmplhndp);
                 break;
 
+            case AC_STEP_EXECKEYWORD:
+                retstepb = FALSE;
+                strs = va_arg(args, char *);
+                while (strs != NULLP) {
+                    prcfctp = va_arg(args, __exec);
+                    if (!retstepb) {
+                        if (__ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, NULLP)) {
+                            retstepb = (*prcfctp)(cmplhndp);
+                        }
+                    }
+                    
+                    /* Next Keyword */
+                    strs = va_arg(args, char *);
+                }
+                break;
+
             case AC_STEP_KEYWORD:
                 retstepb = FALSE;
                 strs = va_arg(args, char *);
-                while (!retstepb && strs != NULLP) {
-                    
-                    retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, NULLP);
-                    
+                while (strs != NULLP) {
+                    if (! retstepb) {
+                        retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, NULLP);
+                    }
+
                     /* Next Keyword */
                     strs = va_arg(args, char *);
                 }
@@ -830,17 +847,25 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
             case AC_STEP_TOKEN:
                 retstepb = FALSE;
                 strs = va_arg(args, char *);
-                while (!retstepb && strs != NULLP) {
-
-                    retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, strs, NULLP);
+                while (strs != NULLP) {
+                    if (! retstepb) {
+                        retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, strs, NULLP);
+                    }
                     
                     /* Next Keyword */
                     strs = va_arg(args, char *);
                 }
                 break;
+            case AC_STEP_BEG_PROCSEQ:
+            case AC_STEP_END_PROCSEQ:
+                /* To Be implimented */
+                break;
 
             default :
-                retstepb = FALSE;
+                va_end(args);
+                __ac_end_stat(cmplhndp);
+                ac_error(AC_UNKNOWN_STEP, step);
+                return(FALSE);
         }
 
         __ac_set_stat(cmplhndp, retstepb);
