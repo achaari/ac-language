@@ -140,6 +140,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             endl = pxtab[(*indx)++];
             while (*indx < endl) {
                 if (*indx == endl - 1 && pxtab[(*indx)] == STEP_DEF_PROCSEQ_RECALL) {
+                    prevstp = STEP_DEF_PROCSEQ_RECALL;
                     (*indx)++;
                 }
                 else {
