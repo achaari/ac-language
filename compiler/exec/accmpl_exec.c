@@ -19,6 +19,7 @@
 #ifndef AC_MANAGE_ERROR
 #define ac_error(a, ...)
 #define ac_warning(a, ...)
+#define ac_log(a, ...)       {if(cmplp->logp) fprintf(cmplp->logp,a, __VA_ARGS__);}
 #endif
 
 typedef enum {
@@ -35,6 +36,7 @@ typedef enum {
 
 typedef struct token_ {
     e_ac_token_ type;
+    int         line;
     int         isfirst;
     int         innewline;
     int         consumed;
@@ -44,7 +46,6 @@ typedef struct token_ {
         char   chr;
         double dbl;
     } data;
-    int keepdata;
 } ac_token_, *pac_token_;
 
 typedef struct file_ {
@@ -64,17 +65,32 @@ typedef struct stat_ {
     struct stat_ *prevp;
 } ac_stat_, *pac_stat_;
 
+typedef struct proc_ {
+    int          stat;
+    int          one_matche;
+    const char   *names;
+    char         *start_pos;
+    struct proc_ *nextp;
+    struct proc_ *prevp;
+} ac_proc_, *pac_proc_;
+
 typedef struct cmpl_ {
     int        modedebug;
     pac_file_  flp;
     ac_token_  curtoken;
+    pac_proc_  procp;
     pac_stat_  statp;
     const char **keyword;
     int        nbkeyword;
     const char **token;
     int        nbtoken;
+    FILE       *logp;
 } ac_cmpl_, *pac_cmpl_;
 
+
+static void __ac_print_token(pac_cmpl_ cmpl, const char *prefix);
+
+/*************************************************************************/
 p_accmpl_ __ac_new_compiler()
 {
     pac_cmpl_ pcmpl = mem_get(sizeof(ac_cmpl_));
@@ -113,6 +129,87 @@ int __ac_exit_compiler(p_accmpl_ *cmplhndp)
 
 p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_type type)
 {
+    pac_cmpl_ cmplp = cmplhndp;
+    pac_proc_ procp = mem_get(sizeof(ac_proc_));
+
+    if (procp == NULLP) return(NULLP);
+    
+    if (cmplp->procp) {
+        cmplp->procp->nextp = procp;
+        procp->prevp = cmplp->procp;
+    }
+
+    cmplp->procp = procp;
+    
+    procp->names = procname;
+    procp->stat  = TRUE;
+
+    /* Save current position */
+    procp->start_pos = cmplp->flp->curpos;
+
+    ac_log("Start PROC : '%s'\n", procname);
+
+    return(FALSE);
+}
+
+static void __ac_pop_proc(pac_cmpl_ cmplp)
+{
+    cmplp->procp = cmplp->procp->prevp;
+
+    if (cmplp->procp) {
+        mem_free(cmplp->procp->nextp);
+        cmplp->procp->nextp = NULLP;
+    }
+}
+
+static void __ac_reset_pos(pac_cmpl_ cmplp, char *curpos)
+{
+    if (cmplp->flp->curpos != curpos) {
+        if (cmplp->curtoken.type == AC_TOKEN_IDENT || cmplp->curtoken.type == AC_TOKEN_STRING) {
+            mem_free(cmplp->curtoken.data.strs);
+            cmplp->curtoken.data.strs = NULLP;
+        }
+        cmplp->curtoken.type = AC_TOKEN_NA;
+
+        if (curpos) {
+            cmplp->flp->curpos = curpos;
+        }
+    }
+}
+
+int __ac_end_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
+{
+    pac_cmpl_ cmplp = cmplhndp; 
+    if (cmplp->procp->one_matche && cmplp->procp->stat) {
+        ac_log("End PROC '%s' with status 'MATCHED'\n", cmplp->procp->names);
+        __ac_pop_proc(cmplp);
+        return(TRUE);
+    }
+    else if (! cmplp->procp->stat) {
+        /* reset previous position */
+        __ac_reset_pos(cmplp, cmplp->procp->start_pos);
+    }
+
+    ac_log("End PROC '%s' with status 'UNMATCHED'\n", cmplp->procp->names);
+    __ac_pop_proc(cmplp);
+    return(FALSE);
+}
+
+int __ac_stop_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
+{
+    pac_cmpl_ cmplp = cmplhndp; 
+    
+    /* reset token and position */
+    __ac_reset_pos(cmplp, cmplp->procp->start_pos);
+
+    if (cmplp->procp->one_matche) {
+        ac_log("End PROC '%s' with status 'ERROR'\n", cmplp->procp->names);
+    }
+    else {
+        ac_log("End PROC '%s' with status 'UNMATCHED'\n", cmplp->procp->names);
+    }
+    __ac_pop_proc(cmplp);
+
     return(FALSE);
 }
 
@@ -148,16 +245,16 @@ static int __ac_end_stat(pac_cmpl_ cmplp)
 static void __ac_set_stat(pac_cmpl_ cmplp, int stat)
 {
     cmplp->statp->stat = stat;
-}
 
-int __ac_end_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
-{
-    return(FALSE);
-}
+    if (cmplp->statp->checkstep) {
+        cmplp->procp->stat &= stat;
+    }
+    else if (stat) {
+        cmplp->procp->stat = TRUE;
+    }
 
-int __ac_stop_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
-{
-    return(FALSE);
+
+    cmplp->procp->one_matche |= stat;
 }
 
 int __ac_pocess_next(p_accmpl_ cmplhndp)
@@ -457,6 +554,7 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
     }
        
     cmplhndp->curtoken.isfirst = (cmplhndp->flp->firstpos == cmplhndp->flp->curpos);
+    cmplhndp->curtoken.line = cmplhndp->flp->line;
 
     if (*cmplhndp->flp->curpos == '\'') {
         cmplhndp->flp->curpos++;
@@ -599,39 +697,23 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
     return(TRUE);
 }
 
-static void __ac_reset_token(pac_token_ tokenp)
-{
-    if (! tokenp->keepdata) {
-        if (tokenp->type == AC_TOKEN_IDENT || tokenp->type == AC_TOKEN_STRING) {
-            mem_free(tokenp->data.strs);
-        }
-    }
-
-    mem_reset(tokenp, sizeof(ac_token_));
-    tokenp->type = AC_TOKEN_NA;
-}
-
-static void __ac_copy_token(pac_token_ tokenp, pac_token_ destp)
-{
-    mem_copy(tokenp, destp, sizeof(ac_token_));
-    tokenp->keepdata = TRUE;
-}
-
 static int __ac_next_token(pac_cmpl_ cmplhndp)
 {
     if (cmplhndp->curtoken.type != AC_TOKEN_NA && !cmplhndp->curtoken.consumed) {
         return(TRUE);
     }
     else {
-        __ac_reset_token(&cmplhndp->curtoken);
-
+        __ac_reset_pos(cmplhndp, NULLP);
         return(__ac_get_next_token(cmplhndp));
     }
 }
 
 static int __ac_validate_matched(pac_cmpl_ cmplhndp, PTR retdata)
 {
+    __ac_print_token(cmplhndp, "Matched ");
+
     cmplhndp->curtoken.consumed = TRUE;
+
     return(TRUE);
 }
 
@@ -709,32 +791,20 @@ static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata
 static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata)
 {
     char *curpos; 
-    ac_token_ curtoken;
-        
     
     if (_is_end(*cmplhndp->flp->curpos) || !__ac_next_token(cmplhndp)) {
         return(FALSE);
     }
 
-    /* Save current token and position */
-    __ac_copy_token(&cmplhndp->curtoken, &curtoken);
+    /* Save current position */
     curpos = cmplhndp->flp->curpos;
 
     if (! __ac_check_one_step(cmplhndp, step, stepdata, retdata)) {
-        /* reset token and position */
-        if (cmplhndp->flp->curpos != curpos) {
-            __ac_reset_token(&cmplhndp->curtoken);
-            mem_copy(&curtoken, &cmplhndp->curtoken, sizeof(ac_token_));
-            cmplhndp->flp->curpos = curpos;
-        }
-        else {
-            cmplhndp->curtoken.keepdata = FALSE;
-        }
+        /* reset position */
+        __ac_reset_pos(cmplhndp, curpos);
+
         return(FALSE);
     }
-
-    /* Clean saved token */
-    __ac_reset_token(&curtoken);
 
     return(TRUE);
 }
@@ -856,6 +926,11 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                     strs = va_arg(args, char *);
                 }
                 break;
+
+            case AC_STEP_LITERAL:
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_LITERAL, NULLP, NULLP);
+                break;
+
             case AC_STEP_BEG_PROCSEQ:
             case AC_STEP_END_PROCSEQ:
                 /* To Be implimented */
@@ -868,7 +943,9 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 return(FALSE);
         }
 
-        __ac_set_stat(cmplhndp, retstepb);
+        if (step > AC_STEP_APPEND_OR) {
+            __ac_set_stat(cmplhndp, retstepb);
+        }
         
         /* Get NextStep */
         step = va_arg(args, int);
@@ -880,19 +957,59 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
 
 int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp)
 {
-    int retfct;
+    int retfct = TRUE;
     pac_cmpl_ cmplp = cmplhndp;
 
     __ac_init_stat(cmplhndp, TRUE);
 
     cmplp->modedebug = TRUE;
 
-    retfct  = (*prcfctp)(cmplhndp);
+    while (retfct && __ac_next_token(cmplhndp)) {
+        retfct = (*prcfctp)(cmplhndp);
+    }
 
     mem_free(cmplp->statp);
     cmplp->statp = NULLP;
 
+    if (cmplp->curtoken.type != AC_TOKEN_NA) {
+        __ac_print_token(cmplhndp, "Unexpected ");
+    }
+
     return(retfct);
+}
+
+static void __ac_print_token(pac_cmpl_ cmpl, const char *prefix)
+{
+    if (cmpl->logp == NULLP) {
+        return;
+    }
+
+    switch (cmpl->curtoken.type) {
+        case AC_TOKEN_IDENT:
+            fprintf(cmpl->logp, "%sIdent : %s (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->flp->line);
+            break;
+        case AC_TOKEN_KEYWORD:
+            fprintf(cmpl->logp, "%sKeyword : %s (%d) \n", prefix, cmpl->keyword[cmpl->curtoken.data.intl], cmpl->flp->line);
+            break;
+        case AC_TOKEN_TOKEN:
+            fprintf(cmpl->logp, "%sToken : '%s' (%d) \n", prefix, cmpl->token[cmpl->curtoken.data.intl], cmpl->flp->line);
+            break;
+        case AC_TOKEN_SYMBOL:
+            fprintf(cmpl->logp, "%sSymbol : '%c' (%d) \n", prefix, cmpl->curtoken.data.chr, cmpl->flp->line);
+            break;
+        case AC_TOKEN_STRING:
+            fprintf(cmpl->logp, "%sString : \"%s\" (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->flp->line);
+            break;
+        case AC_TOKEN_CHAR:
+            fprintf(cmpl->logp, "%sChar : '%s' (%d) \n", prefix, __ac_print_char(cmpl->curtoken.data.chr), cmpl->flp->line);
+            break;
+        case AC_TOKEN_INTEGER:
+            fprintf(cmpl->logp, "%sInteger : '%d' (%d) \n", prefix, cmpl->curtoken.data.intl, cmpl->flp->line);
+            break;
+        case AC_TOKEN_FLOAT:
+            fprintf(cmpl->logp, "%sFloat : '%f' (%d) \n", prefix, cmpl->curtoken.data.dbl, cmpl->flp->line);
+            break;
+    }
 }
 
 #ifdef __AC_TEST__
@@ -901,47 +1018,17 @@ int main()
 {
     const char *files = "D:\\ach projects\\accmplgen\\acdir\\test.c";
     const char *logs = "D:\\ach projects\\accmplgen\\acdir\\logtest.log";
-    FILE *logp;
-
+    
     pac_cmpl_ cmpl = __ac_new_compiler();
 
     __ac_openfile(cmpl, files);
 
+    cmpl->logp = fopen(logs, "w");
+
     /* Test Module */
     __accmpl_exec_module(cmpl);
 
-    logp = fopen(logs, "w");
-
-    while (__ac_next_token(cmpl)) {
-        switch (cmpl->curtoken.type) {
-            case AC_TOKEN_IDENT :
-                fprintf(logp, "Ident : %s (%d) \n", cmpl->curtoken.data.strs, cmpl->flp->line);   
-                break;
-            case AC_TOKEN_KEYWORD:
-                fprintf(logp, "Keyword : %s (%d) \n", cmpl->keyword[cmpl->curtoken.data.intl], cmpl->flp->line);
-                break; 
-            case AC_TOKEN_TOKEN:
-                fprintf(logp, "Token : '%s' (%d) \n", cmpl->token[cmpl->curtoken.data.intl], cmpl->flp->line);
-                break;
-            case AC_TOKEN_SYMBOL:
-                fprintf(logp, "Symbol : '%c' (%d) \n", cmpl->curtoken.data.chr, cmpl->flp->line);
-                break;
-            case AC_TOKEN_STRING:
-                fprintf(logp, "String : \"%s\" (%d) \n", cmpl->curtoken.data.strs, cmpl->flp->line);
-                break;
-            case AC_TOKEN_CHAR:
-                fprintf(logp, "Char : '%s' (%d) \n", __ac_print_char(cmpl->curtoken.data.chr), cmpl->flp->line);
-                break;
-            case AC_TOKEN_INTEGER:
-                fprintf(logp, "Integer : '%d' (%d) \n", cmpl->curtoken.data.intl, cmpl->flp->line);
-                break;
-            case AC_TOKEN_FLOAT:
-                fprintf(logp, "Float : '%f' (%d) \n", cmpl->curtoken.data.dbl, cmpl->flp->line);
-                break;
-        }
-
-        cmpl->curtoken.consumed = TRUE;
-    }
-
+    fclose(cmpl->logp);
 }
+
 #endif
