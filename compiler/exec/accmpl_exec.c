@@ -792,8 +792,10 @@ static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata,
 {
     char *curpos; 
     
-    if (_is_end(*cmplhndp->flp->curpos) || !__ac_next_token(cmplhndp)) {
-        return(FALSE);
+    if (cmplhndp->curtoken.type == AC_TOKEN_NA || cmplhndp->curtoken.consumed) {
+        if (_is_end(*cmplhndp->flp->curpos) || !__ac_next_token(cmplhndp)) {
+            return(FALSE);
+        }
     }
 
     /* Save current position */
