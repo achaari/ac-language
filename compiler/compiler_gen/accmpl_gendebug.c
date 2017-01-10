@@ -41,7 +41,7 @@ static char *ac_get_str(pac_data_list_ strlistp, int index)
     return("");
 }
 
-static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab, int *indx, int level, s_stat_desc_ stat, FILE *outputp)
+static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab, int *indx, int level, s_stat_desc_ stat, int maxendl, FILE *outputp)
 {
     const char *__tabs = "                                                                            ";
     static e_step_def_ prevstp;
@@ -144,7 +144,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
                     (*indx)++;
                 }
                 else {
-                    ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, outputp);
+                    ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, endl, outputp);
                 }
             }
 
@@ -160,9 +160,9 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
         case STEP_DEF_OPTSEQ:
             endl = pxtab[(*indx)++];
             fprintf(outputp, "\n");
-            ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level, STAT_DESC_CHECK, outputp);
+            ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level, STAT_DESC_CHECK, 0, outputp);
             while (*indx < endl) {
-                ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, outputp);
+                ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, endl, outputp);
             }
             fprintf(outputp, "%s}\n", &__tabs[tablidx]);
             break;
@@ -173,22 +173,22 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
                 extdef = stepdef - extl;
                 switch (extl) {
                     case STEP_EXT_OPTSTEP:
-                        ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_TRY, outputp);
+                        ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_TRY, 0, outputp);
                         break;
                     case STEP_EXT_ACCEPT_IF:
-                        ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_BEG_CHECK, outputp);
+                        ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_BEG_CHECK, 0, outputp);
                         while ((pxtab[(*indx)] - STEP_DEF_EXECPROC) % 5 == STEP_EXT_ACCEPT_IF) {
                             fprintf(outputp, "\n");
-                            ac_print_step(cmplgenp, pxtab[(*indx)++] - STEP_EXT_ACCEPT_IF, pxtab, indx, level, STAT_DESC_EXTEND_CHECK_OR, outputp);
+                            ac_print_step(cmplgenp, pxtab[(*indx)++] - STEP_EXT_ACCEPT_IF, pxtab, indx, level, STAT_DESC_EXTEND_CHECK_OR, 0, outputp);
                         }
                         fprintf(outputp, ")) {\n%sreturn(__ac_end_proc(cmplhndp, &procp));\n%s}\n\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
                         break;
                     case STEP_EXT_BREAK_IF:
-                        ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_CHECK, outputp);
+                        ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_CHECK, 0, outputp);
                         fprintf(outputp, "%sbreak;\n%s}\n\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
                         break;
                     case STEP_EXT_RECALL_IF:
-                        ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_CHECK, outputp);
+                        ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_CHECK, 0, outputp);
                         fprintf(outputp, "%scontinue;\n%s}\n\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
                         break;
                 }
@@ -207,9 +207,9 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
 
     if (!stat && ac_is_simple_step(stepdef)) {
         /* Process AND operator for consecutiv simple steps */
-        while (ac_is_simple_step(pxtab[(*indx)])) {
+        while (ac_is_simple_step(pxtab[(*indx)]) && (!maxendl || *indx < maxendl)) {
             fprintf(outputp, "\n");
-            ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level, STAT_DESC_EXTEND_CHECK_AND, outputp);
+            ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level, STAT_DESC_EXTEND_CHECK_AND, 0, outputp);
         }
 
         fprintf(outputp, ")\n");
@@ -241,7 +241,7 @@ void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp)
 
         idx = proc->initpos+1;
         while (idx <= pxtab[proc->initpos]) {
-            ac_print_step(cmplgenp, pxtab[idx++], pxtab, &idx, 1, 0, outputp);
+            ac_print_step(cmplgenp, pxtab[idx++], pxtab, &idx, 1, 0, 0, outputp);
         }
         proc = proc->nextp;
     }
