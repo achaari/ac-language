@@ -832,6 +832,10 @@ static int ac_gen(PTR inputp)
                     ac_warning(ERROR_UNEXPECTED, "ident", ident);
                 }
                 break;
+
+            default :
+                ac_error(ERROR_UNEXPECTED, "char" peek(inputp));
+                return(FALSE);
         }
     }
 
