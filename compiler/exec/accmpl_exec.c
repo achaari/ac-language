@@ -2,6 +2,7 @@
 #include "acstd.h"
 #include "accmplpub.h"
 #include "accmpldefs.h"
+#include "accmpl.h"
 
 #include <stdarg.h>
 
@@ -70,6 +71,7 @@ typedef struct proc_ {
     int          one_matche;
     const char   *names;
     char         *start_pos;
+    int          start_idx;
     struct proc_ *nextp;
     struct proc_ *prevp;
 } ac_proc_, *pac_proc_;
@@ -80,15 +82,22 @@ typedef struct cmpl_ {
     ac_token_  curtoken;
     pac_proc_  procp;
     pac_stat_  statp;
+    int        curidx;
+    int        fatalerrb;
     const char **keyword;
     int        nbkeyword;
     const char **token;
     int        nbtoken;
+    int        *prcdtx;
+    int        nbprcdtx;
     FILE       *logp;
 } ac_cmpl_, *pac_cmpl_;
 
-
+static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata);
+static int __ac_exec_proc(pac_cmpl_ cmplhndp, int procindx, PTR retdata);
 static void __ac_print_token(pac_cmpl_ cmpl, const char *prefix);
+static int __ac_init_stat(pac_cmpl_ cmplp, int checkstepb);
+static int __ac_next_token(pac_cmpl_ cmplhndp);
 
 /*************************************************************************/
 p_accmpl_ __ac_new_compiler()
@@ -117,9 +126,30 @@ int __ac_compl_set_tokens(p_accmpl_ cmplhndp, const char **tokens, int count)
     return(TRUE);
 }
 
-int __ac_compl_exec(p_accmpl_ cmplhndp, int *cmpldatap, int count)
+int __ac_compl_exec(p_accmpl_ cmplhndp, const int *cmpldatap, int count)
 {
-    return(FALSE);
+    int retfct = TRUE;
+    pac_cmpl_ cmplp = cmplhndp;
+
+    cmplp->prcdtx  = cmpldatap;
+    cmplp->nbprcdtx = count;
+
+    __ac_init_stat(cmplhndp, TRUE);
+
+    cmplp->modedebug = TRUE;
+
+    while (retfct && __ac_next_token(cmplhndp)) {
+        retfct = __ac_exec_proc(cmplhndp, 0, NULLP);
+    }
+
+    mem_free(cmplp->statp);
+    cmplp->statp = NULLP;
+
+    if (cmplp->curtoken.type != AC_TOKEN_NA) {
+        __ac_print_token(cmplhndp, "Unexpected ");
+    }
+
+    return(retfct);
 }
 
 int __ac_exit_compiler(p_accmpl_ *cmplhndp)
@@ -127,12 +157,12 @@ int __ac_exit_compiler(p_accmpl_ *cmplhndp)
     return(FALSE);
 }
 
-p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_type type)
+int __ac_init_proc(p_accmpl_ cmplhndp, const char *procname)
 {
     pac_cmpl_ cmplp = cmplhndp;
     pac_proc_ procp = mem_get(sizeof(ac_proc_));
 
-    if (procp == NULLP) return(NULLP);
+    if (procp == NULLP) return(FALSE);
     
     if (cmplp->procp) {
         cmplp->procp->nextp = procp;
@@ -141,15 +171,18 @@ p_accmpl_proc_ __ac_init_proc(p_accmpl_ cmplhndp, const char *procname, e_proc_t
 
     cmplp->procp = procp;
     
-    procp->names = procname;
-    procp->stat  = TRUE;
+    procp->start_idx = cmplp->curidx;
+    procp->names     = procname;
+    procp->stat      = TRUE;
 
     /* Save current position */
     procp->start_pos = cmplp->flp->curpos;
 
-    ac_log("Start PROC : '%s'\n", procname);
+    if (cmplp->modedebug) {
+        ac_log("Start PROC : '%s'\n", procname);
+    }
 
-    return(FALSE);
+    return(TRUE);
 }
 
 static void __ac_pop_proc(pac_cmpl_ cmplp)
@@ -177,9 +210,10 @@ static void __ac_reset_pos(pac_cmpl_ cmplp, char *curpos)
     }
 }
 
-int __ac_end_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
+int __ac_end_proc(p_accmpl_ cmplhndp)
 {
     pac_cmpl_ cmplp = cmplhndp; 
+    
     if (cmplp->procp->one_matche && cmplp->procp->stat) {
         ac_log("End PROC '%s' with status 'MATCHED'\n", cmplp->procp->names);
         __ac_pop_proc(cmplp);
@@ -195,7 +229,7 @@ int __ac_end_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
     return(FALSE);
 }
 
-int __ac_stop_proc(p_accmpl_ cmplhndp, p_accmpl_proc_ *procpp)
+int __ac_stop_proc(p_accmpl_ cmplhndp)
 {
     pac_cmpl_ cmplp = cmplhndp; 
     
@@ -717,9 +751,80 @@ static int __ac_validate_matched(pac_cmpl_ cmplhndp, PTR retdata)
     return(TRUE);
 }
 
+static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstepb, PTR retdata)
+{
+    int retstepb = TRUE, nextidx;
+    
+    /* Need to keep the same execution as debug mode */
+    __ac_init_stat(cmplhndp, checkstepb);
+
+    while (TRUE) {
+
+        retstepb = TRUE;
+        switch (stepdef) {
+            case STEP_DEF_EXECPROC:
+                nextidx  = cmplhndp->curidx++;
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_EXECPROC, &nextidx, retdata);
+                break;
+        }
+
+        __ac_set_stat(cmplhndp, retstepb);
+    }
+
+    return(__ac_end_stat(cmplhndp));
+}
+
+static int __ac_exec_proc(pac_cmpl_ cmplhndp, int procindx, PTR retdata)
+{
+    int offset   = cmplhndp->prcdtx[procindx];
+    int exdpoc   = cmplhndp->prcdtx[offset];
+    int retstepb = TRUE;
+    e_step_def_ stepdef, extdef;
+    e_step_ext_ stepext;
+
+    if (! __ac_init_proc(cmplhndp, NULLP)) {
+        cmplhndp->fatalerrb = TRUE;
+        ac_error(ERROR_MEMORY_ALLOC, "proc");
+        return(FALSE);
+    }
+        
+    cmplhndp->curidx = offset + 1;
+
+    while (TRUE) {
+        stepdef = cmplhndp->curidx++;
+
+        if (stepdef == STEP_DEF_ENDPROC) {
+            cmplhndp->curidx = cmplhndp->procp->start_idx;
+            return(__ac_end_proc(cmplhndp));
+        }
+
+        stepext = (stepdef - STEP_DEF_EXECPROC) % 5;
+        extdef  = stepdef - stepext;
+        switch (stepext) {
+            switch (stepext) {
+                case STEP_EXT_NA:
+                    retstepb = __ac_exec_stat(cmplhndp, extdef, TRUE, NULLP);
+                    break;
+
+                case STEP_EXT_OPTSTEP:
+                    retstepb = __ac_exec_stat(cmplhndp, extdef, FALSE, NULLP);
+                    break;
+            }
+        }
+    }
+}
+
 static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata)
 {
     switch (step) {
+        case AC_STEP_EXECPROC :
+            if (cmplhndp->modedebug) {
+                ac_error(AC_UNEXPECTED_STEP, AC_STEP_EXECPROC);
+                return(FALSE);
+            }
+
+            return(__ac_exec_proc(cmplhndp, *(int *)stepdata, retdata));
+            
         case AC_STEP_IDENT :
             if (cmplhndp->curtoken.type == AC_TOKEN_IDENT) {
                 return(__ac_validate_matched(cmplhndp, retdata));
@@ -818,7 +923,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
     __exec prcfctp;
     va_list args;
     int retstepb = TRUE;
-    PTR datap;
+    PTR datap = NULLP;
     char *strs, chr[2];
 
     mem_reset(chr, sizeof(chr));
@@ -883,7 +988,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 while (strs != NULLP) {
                     prcfctp = va_arg(args, __exec);
                     if (!retstepb) {
-                        if (__ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, NULLP)) {
+                        if (__ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, datap)) {
                             retstepb = (*prcfctp)(cmplhndp);
                         }
                     }
@@ -898,7 +1003,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 strs = va_arg(args, char *);
                 while (strs != NULLP) {
                     if (! retstepb) {
-                        retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, NULLP);
+                        retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, strs, datap);
                     }
 
                     /* Next Keyword */
@@ -907,13 +1012,13 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 break;
 
             case AC_STEP_IDENT:
-                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_IDENT, NULLP, NULLP);
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_IDENT, NULLP, datap);
                 break;
 
             case AC_STEP_SYMBOL:
                 chr[0] = va_arg(args, char);
 
-                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_SYMBOL, chr, NULLP);
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_SYMBOL, chr, datap);
                 break;
 
             case AC_STEP_TOKEN:
@@ -921,7 +1026,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 strs = va_arg(args, char *);
                 while (strs != NULLP) {
                     if (! retstepb) {
-                        retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, strs, NULLP);
+                        retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, strs, datap);
                     }
                     
                     /* Next Keyword */
@@ -930,7 +1035,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 break;
 
             case AC_STEP_LITERAL:
-                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_LITERAL, NULLP, NULLP);
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_LITERAL, NULLP, datap);
                 break;
 
             case AC_STEP_BEG_PROCSEQ:
@@ -1015,7 +1120,7 @@ static void __ac_print_token(pac_cmpl_ cmpl, const char *prefix)
 }
 
 #ifdef __AC_TEST__
-extern int __accmpl_exec_module();
+int __accmpl_exec_module(p_accmpl_ cmpl);
 int main() 
 {
     const char *files = "D:\\ach projects\\accmplgen\\acdir\\test.c";
