@@ -6,14 +6,15 @@ typedef enum {
     STAT_DESC_EXEC = 0,
     STAT_DESC_TRY,
     STAT_DESC_CHECK,
+    STAT_DESC_LOOP,
     STAT_DESC_BEG_CHECK,
     STAT_DESC_EXTEND_CHECK_OR,
     STAT_DESC_EXTEND_CHECK_AND
 } s_stat_desc_;
 
-static const char *stats[]    = { "__ac_exec_step(", "__ac_try_step(", "__ac_check_step(", "__ac_check_step(", "", "" };
-static const char *prefixs[]  = { "", "", "if (", "if (", "                 OR ", "           AND " };
-static const char *postfixs[] = { "", ") \n", ")) { \n", "", "", "" };
+static const char *stats[]    = { "__ac_exec_step(", "__ac_try_step(", "__ac_check_step(", "__ac_check_step(", "__ac_check_step(", "", "" };
+static const char *prefixs[]  = { "", "", "if (", "while (", "if (", "                 OR ", "           AND " };
+static const char *postfixs[] = { "", ") \n", ")) { \n", ")) { \n", "", "", "" };
 
 
 static int ac_is_simple_step(e_step_def_ stepdef)
@@ -158,11 +159,17 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         case STEP_DEF_OPTSEQ:
+        case STEP_DEF_OPTLOOP:
             endl = pxtab[(*indx)++];
             fprintf(outputp, "\n");
-            ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level, STAT_DESC_CHECK, 0, outputp);
-            while (*indx < endl) {
-                ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, endl, outputp);
+            ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level, (stepdef == STEP_DEF_OPTSEQ) ? STAT_DESC_CHECK : STAT_DESC_LOOP, 0, outputp);
+            if (stepdef == STEP_DEF_OPTLOOP && pxtab[(*indx)] == STEP_DEF_NOOP) {
+                fprintf(outputp, "%s;\n", &__tabs[tablidx - 4]);
+            }
+            else {
+                while (*indx < endl) {
+                    ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, endl, outputp);
+                }
             }
             fprintf(outputp, "%s}\n", &__tabs[tablidx]);
             break;
