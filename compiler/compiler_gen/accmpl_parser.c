@@ -170,6 +170,20 @@ static pac_step_ ac_get_step_child(PTR inputp, pac_step_ rootp, char stopchar)
         if (check_char(inputp, stopchar)) {
             break;
         }
+        else if (check_char(inputp, '+')) {
+            if (rootp->type != STEP_TYPE_OPTSEQ) {
+                ac_error(ERROR_UNEXPECTED, "char", '+');
+                ac_free_step(&firstp);
+                return(NULL);
+            }
+            else if (!check_char(inputp, ']')) {
+                ac_error(ERROR_EXPECTED, "char", ']');
+                ac_free_step(&firstp);
+                return(NULL);
+            }
+            rootp->type = STEP_TYPE_OPTLOOP;
+            break;
+        }
         else if (check_char(inputp, '*')) {
             /* Recall ProcSequence */
             if (! ac_get_control_step(inputp, STEP_TYPE_PROCSEQ_RECALL, rootp, &nextp, stopchar)) {
