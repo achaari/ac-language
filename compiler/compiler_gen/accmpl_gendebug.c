@@ -55,7 +55,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
 
     switch (stepdef) {
         case STEP_DEF_ENDPROC:
-            fprintf(outputp, "\n    return(__ac_end_proc(cmplhndp, &procp));\n}\n");
+            fprintf(outputp, "\n    return(__ac_end_proc(cmplhndp));\n}\n");
             break;
 
         case STEP_DEF_PROCSEQ_RECALL:
@@ -98,7 +98,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         case STEP_DEF_ACCEPTPROC:
-            fprintf(outputp, "\n%sreturn(__ac_end_proc(cmplhndp, &procp));\n", &__tabs[tablidx]);
+            fprintf(outputp, "\n%sreturn(__ac_end_proc(cmplhndp));\n", &__tabs[tablidx]);
             break;
 
         case STEP_DEF_KEYWORD:
@@ -189,7 +189,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
                             fprintf(outputp, "\n");
                             ac_print_step(cmplgenp, pxtab[(*indx)++] - STEP_EXT_ACCEPT_IF, pxtab, indx, level, STAT_DESC_EXTEND_CHECK_OR, 0, outputp);
                         }
-                        fprintf(outputp, ")) {\n%sreturn(__ac_end_proc(cmplhndp, &procp));\n%s}\n\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
+                        fprintf(outputp, ")) {\n%sreturn(__ac_end_proc(cmplhndp));\n%s}\n\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
                         break;
                     case STEP_EXT_BREAK_IF:
                         ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_CHECK, 0, outputp);
@@ -247,7 +247,7 @@ void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp)
             proc = proc->nextp;
         }
 
-        fprintf(outputp, "\nstatic int __exec_%s%s(p_accmpl_ cmplhndp)\n{\n    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, \"%s\", AC_TYPE_%s);\n\n", 
+        fprintf(outputp, "\nstatic int __exec_%s%s(p_accmpl_ cmplhndp)\n{\n    if (!__ac_init_proc(cmplhndp, \"%s\")) return(FALSE);\n\n", 
                 (proc->type == PROC_TYPE_KEYWORD) ? "keyword_" : "", proc->names, proc->names,
                 (proc->type == PROC_TYPE_KEYWORD) ? "KEYWORD" : (proc->type == PROC_TYPE_MAIN) ? "MAIN" : "PROC" );
 
