@@ -165,6 +165,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level, (stepdef == STEP_DEF_OPTSEQ) ? STAT_DESC_CHECK : STAT_DESC_LOOP, 0, outputp);
             if (stepdef == STEP_DEF_OPTLOOP && pxtab[(*indx)] == STEP_DEF_NOOP) {
                 fprintf(outputp, "%s;\n", &__tabs[tablidx - 4]);
+                (*indx)++;
             }
             else {
                 while (*indx < endl) {
