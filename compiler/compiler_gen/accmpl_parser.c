@@ -858,22 +858,35 @@ static int ac_gen(PTR inputp)
 
 int main(int argc, char **argv)
 {
+    char *module = "testac";
     PTR inputp;
     char filenames[256]; 
     FILE *outputp;
-    int cmplok;
+    int cmplok, indexl;
     pac_proc_ proc;
 
     /* init cmplgen */
     mem_reset(&cmplgen, sizeof(ac_cmplgen_));
+
+    for (indexl = 1; indexl < argc; indexl++) {
+        if (argv[indexl][0] != '-') {
+            continue;
+        }
+
+        switch (argv[indexl][1]) {
+            case 'm': case 'M':
+                module = argv[indexl] + 2;
+                break;
+        }
+    }
     
-    sprintf(filenames, "%s%s.log", rep, "testac");
+    sprintf(filenames, "%s%s.log", rep, module);
     tracefp = fopen(filenames, "w");
 
-    sprintf(filenames, "%s%s.ac", rep, "testac");
+    sprintf(filenames, "%s%s.ac", rep, module);
     inputp = opensource(filenames);
 
-    sprintf(filenames, "%s%s.c", rep, "acgen");
+    sprintf(filenames, "%sacgen.c", rep);
     outputp = fopen(filenames, "w");
     
     cmplok = ac_gen(inputp);
