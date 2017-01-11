@@ -8,7 +8,7 @@
 .expression;
 
 /* Type definition, exmpl : Object, Package::Object, NameSpace::Package::Object */
-.type_name : {ident ["::" *] } ;
+.type_name : [~(void, int, double, float, char) ;] ident ["::" ident +] ;
 
 /* variable/member reference or function call */
 .variable_name   : ident ['(' [')' ;] { <expression> [',' *] } ')' ] ; 
@@ -18,7 +18,7 @@
     ['(' { [')' ,] { ident [')' ,] ',' * } } ')' ['{' <block_statement> '}' ;] "=>" '(' <expression> ')' ;]
     
     /* function pointer */
-    <type_name> { ['.'  <variable_name> * ] };
+    <type_name> ['.'  <variable_name> + ] ;
     
 .variable_expression :
 
@@ -40,7 +40,7 @@
 .unit_expression : 
     
     /* primary expression */
-    <variable_expression> { [ %("->", "::", ":", ".")  <variable_name> * ] }
+    <variable_expression> [ %("->", "::", ":", ".")  <variable_name> + ] 
        
     /* expression postfix */ 
     [ %("++", "--") ]    
@@ -98,7 +98,7 @@
 
 /* CmplProc entry-point */
 .variable_declaration : ~(local,global) <variable_definition> [',' <variable_definition> ;] ';' ;
-.function_definition  : ~function ident '(' [ident { [',' ident *] } ] ')' [';' ;] '{' { [<block_statement> *] } '}' ;
+.function_definition  : ~function ident '(' [ident { [',' ident *] } ] ')' [';' ;] '{' [<block_statement> +] '}' ;
 .object_definition    : ~object ident [':' { <type_name> [',' *] } ] '{' { <object_member> ['}' ';' ,] * } ;
 
 /* Main CmplProc */
@@ -106,4 +106,27 @@
     [<variable_declaration> ;]
     [<object_definition>    ;]
     [<function_definition>  ;] 
+    
+/* C-code : */
+    [~extern ~C_CODE '{' [<c_code_block> + ] '}' ;]    
     ;
+
+.base_type : [~(void, int, double, float, char) ;] [~struct ident ;] ident ;
+   
+.data_type : <base_type> ['*' +];
+
+.c_expressions  : literal;
+.c_codeblock    : literal;
+.c_variable_dec : {['*' *]} ident ['[' <c_expressions> ']' + ] [ '=' <c_expressions> ];
+.c_declaration  : [~static][~const] <base_type> <c_variable_dec>  [ ',' <c_variable_dec> + ]  ';';
+.c_function : [~static][~const] <data_type> ident '(' [<data_type> ident { [',' <data_type> ident * ] } ] ')' [';' ;] '{' <c_codeblock> '}';
+
+.sig_fct_args : [<data_type> [ident] ];
+.fct_ptr_id   : '(' '*' { [ident ,] <fct_ptr_id> } ')' '(' [<sig_fct_args>] ')';
+.function_ptr : <data_type> <fct_ptr_id> ';';
+
+.keyword typedef : [<function_ptr> ;];
+
+.c_code_block : [<c_function> ;][^typedef ;];
+
+/**/
