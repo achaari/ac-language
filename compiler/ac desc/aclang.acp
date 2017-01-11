@@ -74,8 +74,8 @@
 .keyword if      : '(' <expression> ')' <block_statement> [~else <block_statement> ] ;
 .keyword while   : '(' <expression> ')' <block_statement> ;
 .keyword do      : <block_statement> ~while '(' <expression> ')' ';' ;
-.keyword switch  : '(' <expression> ')' '{' { ['}' ,] [~default ':' <block_statement> '}' ,] ~case literal ':' <block_statement> * } ;
-.keyword for     : '(' <expression_statement> { [';' ,] <expression>  ';'} {[')' ,] <expression> ')' } <block_statement> ;
+.keyword switch  : '(' <expression> ')' '{' [~case literal ':' <block_statement> +] [~default ':' <block_statement>] '}';
+.keyword for     : '(' <expression_statement>  [<expression>] ';'  [<expression>] ')'  <block_statement> ;
 .keyword foreach : '(' <expression> ~in <expression> [ ':' <expression> ] ')' <block_statement> ;
     
 
@@ -98,7 +98,7 @@
 
 /* CmplProc entry-point */
 .variable_declaration : ~(local,global) <variable_definition> [',' <variable_definition> ;] ';' ;
-.function_definition  : ~function ident '(' [ident { [',' ident *] } ] ')' [';' ;] '{' [<block_statement> +] '}' ;
+.function_definition  : ~function ident '(' [ident [',' ident +]  ] ')' [';' ;] '{' [<block_statement> +] '}' ;
 .object_definition    : ~object ident [':' { <type_name> [',' *] } ] '{' { <object_member> ['}' ';' ,] * } ;
 
 /* Main CmplProc */
