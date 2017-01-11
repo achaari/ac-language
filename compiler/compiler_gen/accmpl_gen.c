@@ -55,9 +55,11 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
 
     switch (steptype) {
         case STEP_TYPE_OPTSEQ:  
-            if (step->childp) {
+        case STEP_TYPE_OPTLOOP:
+
+            if (step->childp || (steptype == STEP_TYPE_OPTLOOP)) {
                 stepext = STEP_EXT_NA;
-                tab[(*index)++] = STEP_DEF_OPTSEQ;
+                tab[(*index)++] = (steptype == STEP_TYPE_OPTSEQ) ? STEP_DEF_OPTSEQ : STEP_DEF_OPTLOOP;
                 endpos = (*index)++;
             }
             else {
@@ -74,6 +76,9 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
                 }
 
                 tab[endpos] = *index;
+            }
+            else if (steptype == STEP_TYPE_OPTLOOP) {
+                tab[(*index)++] = STEP_DEF_NOOP;
             }
             break;
 
