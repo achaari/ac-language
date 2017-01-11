@@ -243,6 +243,10 @@ void ac_print_proc(pac_cmplgen_ cmplgenp, int *pxtab, FILE *outputp)
     proc = cmplgenp->proc_listp;
     while (proc) {
 
+        if (!proc->isdefb) {
+            proc = proc->nextp;
+        }
+
         fprintf(outputp, "\nstatic int __exec_%s%s(p_accmpl_ cmplhndp)\n{\n    p_accmpl_proc_ procp = __ac_init_proc(cmplhndp, \"%s\", AC_TYPE_%s);\n\n", 
                 (proc->type == PROC_TYPE_KEYWORD) ? "keyword_" : "", proc->names, proc->names,
                 (proc->type == PROC_TYPE_KEYWORD) ? "KEYWORD" : (proc->type == PROC_TYPE_MAIN) ? "MAIN" : "PROC" );
