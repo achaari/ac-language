@@ -14,8 +14,10 @@ typedef enum {
 
 typedef enum {
     STEP_DEF_NA = 0,
+    STEP_DEF_NOOP,
     STEP_DEF_PROCSEQ,
     STEP_DEF_OPTSEQ,
+    STEP_DEF_OPTLOOP,
     STEP_DEF_ENDPROC,
     STEP_DEF_ACCEPTPROC,
     STEP_DEF_PROCSEQ_RECALL,
