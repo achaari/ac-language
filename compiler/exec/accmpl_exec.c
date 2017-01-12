@@ -1,8 +1,9 @@
 
 #include "acstd.h"
+#include "accmpl.h"
+
 #include "accmplpub.h"
 #include "accmpldefs.h"
-#include "accmpl.h"
 
 #include <stdarg.h>
 
@@ -69,6 +70,7 @@ typedef struct stat_ {
 typedef struct proc_ {
     int          stat;
     int          one_matche;
+    int          endproc;
     const char   *names;
     char         *start_pos;
     int          start_idx;
@@ -93,7 +95,9 @@ typedef struct cmpl_ {
     FILE       *logp;
 } ac_cmpl_, *pac_cmpl_;
 
+static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstepb, PTR retdata);
 static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata);
+static int __ac_exec_proc_step(pac_cmpl_ cmplhndp, e_step_def_ stepdef);
 static int __ac_exec_proc(pac_cmpl_ cmplhndp, int procindx, PTR retdata);
 static void __ac_print_token(pac_cmpl_ cmpl, const char *prefix);
 static int __ac_init_stat(pac_cmpl_ cmplp, int checkstepb);
@@ -213,7 +217,9 @@ int __ac_end_proc(p_accmpl_ cmplhndp)
     pac_cmpl_ cmplp = cmplhndp; 
     
     if (cmplp->procp->one_matche && cmplp->procp->stat) {
-        ac_log("End PROC '%s' with status 'MATCHED'\n", cmplp->procp->names);
+        if (cmplp->modedebug) {
+            ac_log("End PROC '%s' with status 'MATCHED'\n", cmplp->procp->names);
+        }
         __ac_pop_proc(cmplp);
         return(TRUE);
     }
@@ -222,7 +228,9 @@ int __ac_end_proc(p_accmpl_ cmplhndp)
         __ac_reset_pos(cmplp, cmplp->procp->start_pos);
     }
 
-    ac_log("End PROC '%s' with status 'UNMATCHED'\n", cmplp->procp->names);
+    if (cmplp->modedebug) {
+        ac_log("End PROC '%s' with status 'UNMATCHED'\n", cmplp->procp->names);
+    }
     __ac_pop_proc(cmplp);
     return(FALSE);
 }
@@ -235,10 +243,14 @@ int __ac_stop_proc(p_accmpl_ cmplhndp)
     __ac_reset_pos(cmplp, cmplp->procp->start_pos);
 
     if (cmplp->procp->one_matche) {
-        ac_log("End PROC '%s' with status 'ERROR'\n", cmplp->procp->names);
+        if (cmplp->modedebug) {
+            ac_log("End PROC '%s' with status 'ERROR'\n", cmplp->procp->names);
+        }
     }
     else {
-        ac_log("End PROC '%s' with status 'UNMATCHED'\n", cmplp->procp->names);
+        if (cmplp->modedebug) {
+            ac_log("End PROC '%s' with status 'UNMATCHED'\n", cmplp->procp->names);
+        }
     }
     __ac_pop_proc(cmplp);
 
@@ -749,57 +761,159 @@ static int __ac_validate_matched(pac_cmpl_ cmplhndp, PTR retdata)
     return(TRUE);
 }
 
-static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstepb, int endpos, PTR retdata)
+static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstepb, PTR retdata)
 {
-    int retstepb = TRUE, nextidx, curidx;
+    int retstepb = TRUE, nextidx, curidx, count, endpos, startpos;
     
     /* Need to keep the same execution as debug mode */
     __ac_init_stat(cmplhndp, checkstepb);
 
-    while (TRUE) {
+    retstepb = TRUE;
+    switch (stepdef) {
+        case STEP_DEF_NOOP:
+            break;
 
-        retstepb = TRUE;
-        switch (stepdef) {
-            case STEP_DEF_EXECPROC:
-                nextidx  = cmplhndp->prcdtx[cmplhndp->curidx++];
-                retstepb = __ac_exec_proc(cmplhndp, nextidx, retdata);
-                break;
+        case STEP_DEF_ENDPROC:
+            cmplhndp->procp->endproc = TRUE;
+            break;
 
-            case STEP_DEF_TOKEN:
-                nextidx = cmplhndp->prcdtx[cmplhndp->curidx++];
-                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, &nextidx, retdata);
-                break;
+        case STEP_DEF_EXECPROC:
+            nextidx  = cmplhndp->prcdtx[cmplhndp->curidx++];
+            retstepb = __ac_exec_proc(cmplhndp, nextidx, retdata);
+            break;
 
-            case STEP_DEF_EXECKEYWORD:
-                retstepb = FALSE;
-                curidx  = cmplhndp->prcdtx[cmplhndp->curidx++];
-                nextidx = cmplhndp->prcdtx[cmplhndp->curidx++];
-                if (__ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, &curidx, NULLP)) {
-                    retstepb = __ac_exec_proc(cmplhndp, nextidx, retdata);
+        case STEP_DEF_GETIDENT:
+            retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_IDENT, NULLP, NULLP);
+            break;
+
+        case STEP_DEF_LITERAL:
+            retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_LITERAL, NULLP, NULLP);
+            break;
+
+        case STEP_DEF_TOKEN:
+            nextidx = cmplhndp->prcdtx[cmplhndp->curidx++];
+            retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, &nextidx, NULLP);
+            break;
+            
+        case STEP_DEF_KEYWORD:
+            nextidx = cmplhndp->prcdtx[cmplhndp->curidx++];
+            retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, &nextidx, NULLP);
+            break;
+
+        case STEP_DEF_MULTI_KEYWORD:
+            retstepb = FALSE;
+            count = cmplhndp->prcdtx[cmplhndp->curidx++];
+            for (curidx = 0; !retstepb && curidx < count; curidx++) {
+                nextidx = cmplhndp->prcdtx[cmplhndp->curidx + count];
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, &nextidx, NULLP);
+            }
+
+            cmplhndp->curidx += count;
+            break;
+
+        case STEP_DEF_EXECKEYWORD:
+            retstepb = FALSE;
+            curidx  = cmplhndp->prcdtx[cmplhndp->curidx++];
+            nextidx = cmplhndp->prcdtx[cmplhndp->curidx++];
+            if (__ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, &curidx, NULLP)) {
+                retstepb = __ac_exec_proc(cmplhndp, nextidx, NULLP);
+            }
+            break;
+
+        case STEP_DEF_OPTSEQ:
+            retstepb = TRUE;
+            endpos = cmplhndp->prcdtx[cmplhndp->curidx++];
+            stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
+            if (__ac_exec_stat(cmplhndp, stepdef, FALSE, NULLP)) {
+                while (cmplhndp->curidx < endpos) {
+                    /* Get first step */
+                    stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
+                    if (!__ac_exec_proc_step(cmplhndp, stepdef)) {
+                        retstepb = FALSE;
+                        break;
+                    }
+                    else if (cmplhndp->procp->endproc) {
+                        break;
+                    }
                 }
-                break;
-        }
+            }
+            cmplhndp->curidx = endpos;
+            break;
 
-        __ac_set_stat(cmplhndp, retstepb);
+        case STEP_DEF_OPTLOOP:
+            retstepb = TRUE;
+            endpos = cmplhndp->prcdtx[cmplhndp->curidx++];
+            stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
+            startpos = cmplhndp->curidx - 1;
+            while (__ac_exec_stat(cmplhndp, stepdef, FALSE, NULLP)) {
+                cmplhndp->curidx = startpos;
+                while (cmplhndp->curidx < endpos) {
+                    /* Get first step */
+                    stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
+                    if (!__ac_exec_proc_step(cmplhndp, stepdef)) {
+                        retstepb = FALSE;
+                        break;
+                    }
+                    else if (cmplhndp->procp->endproc) {
+                        break;
+                    }
+                }
 
-        if (endpos == -1 || cmplhndp->curidx >= endpos) {
-            return(__ac_end_stat(cmplhndp));
-        }
+                if (cmplhndp->procp->endproc || !retstepb) {
+                    break;
+                }
+            }
+            cmplhndp->curidx = endpos;
+            break;
 
-        /* get next strep */
-        stepdef = cmplhndp->curidx++;
+        default:
+            ac_error(AC_INVALID_STEP, stepdef);
+            __ac_end_stat(cmplhndp);
+            return(FALSE);
+
     }
 
+    __ac_set_stat(cmplhndp, retstepb);
     return(__ac_end_stat(cmplhndp));
+}
+
+static int __ac_exec_proc_step(pac_cmpl_ cmplhndp, e_step_def_ stepdef)
+{
+    e_step_def_ extdef;
+    e_step_ext_ stepext;
+
+    if (stepdef < STEP_DEF_EXECPROC) {
+        return(__ac_exec_stat(cmplhndp, stepdef, TRUE, NULLP));
+    }
+
+    stepext = (stepdef - STEP_DEF_EXECPROC) % 5;
+    extdef = stepdef - stepext;
+    switch (stepext) {
+        case STEP_EXT_NA:
+            return(__ac_exec_stat(cmplhndp, extdef, TRUE, NULLP));
+
+        case STEP_EXT_OPTSTEP:
+            __ac_exec_stat(cmplhndp, extdef, FALSE, NULLP);
+            return(TRUE);
+
+        case STEP_EXT_ACCEPT_IF:
+            if (__ac_exec_stat(cmplhndp, extdef, FALSE, NULLP)) {
+                cmplhndp->procp->endproc = TRUE;
+            }
+            return(TRUE);
+
+        default :
+            return(FALSE);
+    }
+
+    return(FALSE);
 }
 
 static int __ac_exec_proc(pac_cmpl_ cmplhndp, int procindx, PTR retdata)
 {
-    int offset   = cmplhndp->prcdtx[procindx], endpos;
+    int offset   = cmplhndp->prcdtx[procindx];
     int exdpoc   = cmplhndp->prcdtx[offset];
-    int retstepb = TRUE, forcecheckstepb, movenext;
-    e_step_def_ stepdef, extdef;
-    e_step_ext_ stepext;
+    e_step_def_  stepdef;
 
     if (! __ac_init_proc(cmplhndp, NULLP)) {
         cmplhndp->fatalerrb = TRUE;
@@ -811,50 +925,14 @@ static int __ac_exec_proc(pac_cmpl_ cmplhndp, int procindx, PTR retdata)
 
     while (TRUE) {
         stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
-        forcecheckstepb = FALSE;
-        movenext = FALSE;
-        endpos = -1;
-
-        switch(stepdef) {
-            case STEP_DEF_ENDPROC :
-                cmplhndp->curidx = cmplhndp->procp->start_idx;
-                return(__ac_end_proc(cmplhndp));
-
-            case STEP_DEF_OPTSEQ :
-                endpos          = cmplhndp->prcdtx[cmplhndp->curidx++];
-                stepdef         = cmplhndp->prcdtx[cmplhndp->curidx++];
-                forcecheckstepb = TRUE;
-                if (!__ac_exec_stat(cmplhndp, stepdef, FALSE, -1, NULLP)) {
-                    cmplhndp->curidx = endpos;
-                    movenext = TRUE;
-                }
-                else {
-                    /* Get first step */
-                    stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
-                }
-                break;
+        
+        if (! __ac_exec_proc_step(cmplhndp, stepdef)) {
+            cmplhndp->curidx = cmplhndp->procp->start_idx;
+            return(__ac_stop_proc(cmplhndp));
         }
-
-        if (movenext) {
-            continue;
-        }
-
-        stepext = (stepdef - STEP_DEF_EXECPROC) % 5;
-        extdef  = stepdef - stepext;
-        switch (stepext) {
-            case STEP_EXT_NA:
-                retstepb = __ac_exec_stat(cmplhndp, extdef, TRUE, endpos, NULLP);
-                break;
-
-            case STEP_EXT_OPTSTEP:
-                retstepb = __ac_exec_stat(cmplhndp, extdef, forcecheckstepb, endpos, NULLP);
-                break;
-
-            case STEP_EXT_ACCEPT_IF:
-                if (__ac_exec_stat(cmplhndp, extdef, forcecheckstepb, endpos, NULLP)) {
-                    cmplhndp->curidx = cmplhndp->procp->start_idx;
-                    return(__ac_end_proc(cmplhndp));
-                }
+        else if (cmplhndp->procp->endproc) {
+            cmplhndp->curidx = cmplhndp->procp->start_idx;
+            return(__ac_end_proc(cmplhndp));
         }
     }
 
@@ -902,23 +980,17 @@ static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata
             break;
 
         case AC_STEP_SYMBOL:
-            if (cmplhndp->curtoken.type == AC_TOKEN_SYMBOL) {
-                if (cmplhndp->modedebug) {
-                    if (cmplhndp->curtoken.data.chr == *(char *)stepdata) {
-                        return(__ac_validate_matched(cmplhndp, retdata));
-                    }
-                }
-                else if (cmplhndp->curtoken.data.chr == *cmplhndp->token[*(int *)stepdata] && strlen(cmplhndp->token[*(int *)stepdata]) == 1) {
+            if (!cmplhndp->modedebug) {
+                ac_error(AC_UNEXPECTED_STEP, AC_STEP_SYMBOL);
+                return(FALSE);
+            }
+            else if (cmplhndp->curtoken.type == AC_TOKEN_SYMBOL) {
+                if (cmplhndp->curtoken.data.chr == *(char *)stepdata) {
                     return(__ac_validate_matched(cmplhndp, retdata));
                 }
             }
             else if (cmplhndp->curtoken.type == AC_TOKEN_TOKEN) {
-                if (cmplhndp->modedebug) {
-                    if (iseqstr(cmplhndp->token[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
-                        return(__ac_validate_matched(cmplhndp, retdata));
-                    }
-                }
-                else if (cmplhndp->curtoken.data.intl == *(int *)stepdata && strlen(cmplhndp->token[*(int *)stepdata]) == 1) {
+                if (iseqstr(cmplhndp->token[cmplhndp->curtoken.data.intl], (char *)stepdata)) {
                     return(__ac_validate_matched(cmplhndp, retdata));
                 }
             }
@@ -997,8 +1069,9 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
             case AC_STEP_APPEND_AND:
                 if (!checkstepb) {
                     ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_AND);
+                    __ac_end_stat(cmplhndp);
                     va_end(args);
-                    return(__ac_end_stat(cmplhndp));
+                    return(FALSE);
                 }
                 else if (! cmplp->statp->stat) {
                     /* if previous step is not matched, we stop sequence */
@@ -1010,8 +1083,9 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
             case AC_STEP_APPEND_OR:
                 if (checkstepb) {
                     ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_OR);
+                    __ac_end_stat(cmplhndp);
                     va_end(args);
-                    return(__ac_end_stat(cmplhndp));
+                    return(FALSE);
                 }
                 else if (cmplp->statp->stat) {
                     /* if previous step is matched, we stop sequence */
@@ -1023,6 +1097,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
             case AC_STEP_EXECPROC:
                 prcfctp = va_arg(args, __exec);
                 if (prcfctp == NULLP) {
+                    __ac_end_stat(cmplhndp);
                     va_end(args);
                     return(FALSE);
                 }
