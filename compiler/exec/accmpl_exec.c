@@ -88,7 +88,7 @@ typedef struct cmpl_ {
     int        nbkeyword;
     const char **token;
     int        nbtoken;
-    int        *prcdtx;
+    const int  *prcdtx;
     int        nbprcdtx;
     FILE       *logp;
 } ac_cmpl_, *pac_cmpl_;
@@ -135,9 +135,7 @@ int __ac_compl_exec(p_accmpl_ cmplhndp, const int *cmpldatap, int count)
     cmplp->nbprcdtx = count;
 
     __ac_init_stat(cmplhndp, TRUE);
-
-    cmplp->modedebug = TRUE;
-
+    
     while (retfct && __ac_next_token(cmplhndp)) {
         retfct = __ac_exec_proc(cmplhndp, 0, NULLP);
     }
@@ -751,9 +749,9 @@ static int __ac_validate_matched(pac_cmpl_ cmplhndp, PTR retdata)
     return(TRUE);
 }
 
-static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstepb, PTR retdata)
+static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstepb, int endpos, PTR retdata)
 {
-    int retstepb = TRUE, nextidx;
+    int retstepb = TRUE, nextidx, curidx;
     
     /* Need to keep the same execution as debug mode */
     __ac_init_stat(cmplhndp, checkstepb);
@@ -763,12 +761,33 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
         retstepb = TRUE;
         switch (stepdef) {
             case STEP_DEF_EXECPROC:
-                nextidx  = cmplhndp->curidx++;
-                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_EXECPROC, &nextidx, retdata);
+                nextidx  = cmplhndp->prcdtx[cmplhndp->curidx++];
+                retstepb = __ac_exec_proc(cmplhndp, nextidx, retdata);
+                break;
+
+            case STEP_DEF_TOKEN:
+                nextidx = cmplhndp->prcdtx[cmplhndp->curidx++];
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, &nextidx, retdata);
+                break;
+
+            case STEP_DEF_EXECKEYWORD:
+                retstepb = FALSE;
+                curidx  = cmplhndp->prcdtx[cmplhndp->curidx++];
+                nextidx = cmplhndp->prcdtx[cmplhndp->curidx++];
+                if (__ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, &curidx, NULLP)) {
+                    retstepb = __ac_exec_proc(cmplhndp, nextidx, retdata);
+                }
                 break;
         }
 
         __ac_set_stat(cmplhndp, retstepb);
+
+        if (endpos == -1 || cmplhndp->curidx >= endpos) {
+            return(__ac_end_stat(cmplhndp));
+        }
+
+        /* get next strep */
+        stepdef = cmplhndp->curidx++;
     }
 
     return(__ac_end_stat(cmplhndp));
@@ -776,9 +795,9 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
 
 static int __ac_exec_proc(pac_cmpl_ cmplhndp, int procindx, PTR retdata)
 {
-    int offset   = cmplhndp->prcdtx[procindx];
+    int offset   = cmplhndp->prcdtx[procindx], endpos;
     int exdpoc   = cmplhndp->prcdtx[offset];
-    int retstepb = TRUE;
+    int retstepb = TRUE, forcecheckstepb, movenext;
     e_step_def_ stepdef, extdef;
     e_step_ext_ stepext;
 
@@ -791,27 +810,56 @@ static int __ac_exec_proc(pac_cmpl_ cmplhndp, int procindx, PTR retdata)
     cmplhndp->curidx = offset + 1;
 
     while (TRUE) {
-        stepdef = cmplhndp->curidx++;
+        stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
+        forcecheckstepb = FALSE;
+        movenext = FALSE;
+        endpos = -1;
 
-        if (stepdef == STEP_DEF_ENDPROC) {
-            cmplhndp->curidx = cmplhndp->procp->start_idx;
-            return(__ac_end_proc(cmplhndp));
+        switch(stepdef) {
+            case STEP_DEF_ENDPROC :
+                cmplhndp->curidx = cmplhndp->procp->start_idx;
+                return(__ac_end_proc(cmplhndp));
+
+            case STEP_DEF_OPTSEQ :
+                endpos          = cmplhndp->prcdtx[cmplhndp->curidx++];
+                stepdef         = cmplhndp->prcdtx[cmplhndp->curidx++];
+                forcecheckstepb = TRUE;
+                if (!__ac_exec_stat(cmplhndp, stepdef, FALSE, -1, NULLP)) {
+                    cmplhndp->curidx = endpos;
+                    movenext = TRUE;
+                }
+                else {
+                    /* Get first step */
+                    stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
+                }
+                break;
+        }
+
+        if (movenext) {
+            continue;
         }
 
         stepext = (stepdef - STEP_DEF_EXECPROC) % 5;
         extdef  = stepdef - stepext;
         switch (stepext) {
-            switch (stepext) {
-                case STEP_EXT_NA:
-                    retstepb = __ac_exec_stat(cmplhndp, extdef, TRUE, NULLP);
-                    break;
+            case STEP_EXT_NA:
+                retstepb = __ac_exec_stat(cmplhndp, extdef, TRUE, endpos, NULLP);
+                break;
 
-                case STEP_EXT_OPTSTEP:
-                    retstepb = __ac_exec_stat(cmplhndp, extdef, FALSE, NULLP);
-                    break;
-            }
+            case STEP_EXT_OPTSTEP:
+                retstepb = __ac_exec_stat(cmplhndp, extdef, forcecheckstepb, endpos, NULLP);
+                break;
+
+            case STEP_EXT_ACCEPT_IF:
+                if (__ac_exec_stat(cmplhndp, extdef, forcecheckstepb, endpos, NULLP)) {
+                    cmplhndp->curidx = cmplhndp->procp->start_idx;
+                    return(__ac_end_proc(cmplhndp));
+                }
         }
     }
+
+    cmplhndp->curidx = cmplhndp->procp->start_idx;
+    return(__ac_stop_proc(cmplhndp));
 }
 
 static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata)
