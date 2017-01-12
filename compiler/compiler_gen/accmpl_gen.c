@@ -79,6 +79,7 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             }
             else if (steptype == STEP_TYPE_OPTLOOP) {
                 tab[(*index)++] = STEP_DEF_NOOP;
+                tab[endpos]     = *index;
             }
             break;
 
