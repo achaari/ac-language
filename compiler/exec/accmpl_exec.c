@@ -764,7 +764,7 @@ static int __ac_validate_matched(pac_cmpl_ cmplhndp, PTR retdata)
 static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstepb, PTR retdata)
 {
     int retstepb = TRUE, nextidx, curidx, count, endpos, startpos;
-    
+
     /* Need to keep the same execution as debug mode */
     __ac_init_stat(cmplhndp, checkstepb);
 
@@ -842,11 +842,15 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
 
         case STEP_DEF_OPTLOOP:
             retstepb = TRUE;
-            endpos = cmplhndp->prcdtx[cmplhndp->curidx++];
-            stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
-            startpos = cmplhndp->curidx - 1;
-            while (__ac_exec_stat(cmplhndp, stepdef, FALSE, NULLP)) {
+            startpos = cmplhndp->curidx;
+            while (TRUE) {
                 cmplhndp->curidx = startpos;
+                endpos = cmplhndp->prcdtx[cmplhndp->curidx++];
+                stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
+                if (! __ac_exec_stat(cmplhndp, stepdef, FALSE, NULLP)) {
+                    break;
+                }
+
                 while (cmplhndp->curidx < endpos) {
                     /* Get first step */
                     stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
