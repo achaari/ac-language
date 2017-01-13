@@ -13,6 +13,12 @@
 #endif
 
 typedef enum {
+    STEP_FLAG_NON    = 0,
+    STEP_FLAG_BREAK,
+    STEP_FLAG_RECALL 
+} e_step_flag_;
+
+typedef enum {
     PROC_TYPE_PROC = 0,
     PROC_TYPE_MAIN,
     PROC_TYPE_KEYWORD
@@ -58,6 +64,7 @@ typedef struct step_ {
         char *codes;
         char chr;
     } datap;
+    int stepflagb;
     struct step_ *rootp;
     struct step_ *headp;
     struct step_ *childp;
@@ -77,6 +84,8 @@ typedef struct proc_{
 
 typedef struct cmplgen_ {
     char          *module_name;
+    int       procseq;
+    int           seqidx;
     pac_proc_     proc_listp;
     pac_data_list_ keyword_listp;
     pac_data_list_ token_listp;
