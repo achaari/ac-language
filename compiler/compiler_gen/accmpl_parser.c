@@ -147,7 +147,7 @@ static pac_step_ ac_get_control_step(PTR inputp, e_step_type_ type, pac_step_ ro
         if (!step) {
             ac_error(ERROR_MEMORY_ALLOC, "cntrolstep");
             return(NULLP);
-        }
+        }       
     }
 
     if (type != STEP_TYPE_PROC_ACCEPT) {
@@ -156,6 +156,13 @@ static pac_step_ ac_get_control_step(PTR inputp, e_step_type_ type, pac_step_ ro
             ac_free_step(&step);
             ac_error(ERROR_NOT_IN_POCSEQ);
             return(NULLP);
+        }
+
+        if (type == STEP_TYPE_PROCSEQ_RECALL) {
+            step->headp->stepflagb |= (1 << STEP_FLAG_RECALL);
+        }
+        else if (type == STEP_TYPE_PROCSEQ_BREAK) {
+            step->headp->stepflagb |= (1 << STEP_FLAG_BREAK);
         }
     }
 
@@ -190,7 +197,7 @@ static pac_step_ ac_get_step_child(PTR inputp, pac_step_ rootp, char stopchar)
                 ac_error(ERROR_INVALID_STEP);
                 ac_free_step(&firstp);
                 return(NULL);
-            }
+            }       
         }
         else if (check_char(inputp, ',')) {
             /* Break ProcSequence */
