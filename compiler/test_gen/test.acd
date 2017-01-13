@@ -1,0 +1,11 @@
+.base_type_dec  : [~(void, int, double, float, char) ;] ident;
+.data_name      : ['*' +] ident ;
+
+.struct_one_fld : <data_type_defs> <data_name> ['[' literal ']' +] ';' ;
+.struct_fields  : [ident] '{' <struct_one_fld> [<struct_one_fld> +] '}' ;
+
+.data_type_defs : [~(struct, union) [<struct_fields> ;] ident ;] <base_type_dec> ;
+
+.keyword typedef : <data_type_defs> <data_name> [',' <data_name> +] ';';
+
+.main : ['#' ~define ident literal;] [^typedef ;] ;
