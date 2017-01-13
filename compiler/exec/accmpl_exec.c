@@ -67,6 +67,13 @@ typedef struct stat_ {
     struct stat_ *prevp;
 } ac_stat_, *pac_stat_;
 
+typedef struct procseq_ {
+    int             endseq;
+    int             recall;
+    struct procseq_ *nextp;
+    struct procseq_ *prevp;
+} ac_procseq_, *pac_procseq_;
+
 typedef struct proc_ {
     int          stat;
     int          one_matche;
@@ -74,6 +81,7 @@ typedef struct proc_ {
     const char   *names;
     char         *start_pos;
     int          start_idx;
+    pac_procseq_ curseqp;
     struct proc_ *nextp;
     struct proc_ *prevp;
 } ac_proc_, *pac_proc_;
@@ -768,6 +776,32 @@ static int __ac_validate_matched(pac_cmpl_ cmplhndp, PTR retdata)
     return(TRUE);
 }
 
+static int __ac_push_procseq(pac_cmpl_ cmplp)
+{
+    pac_procseq_ procseq = mem_get(sizeof(ac_procseq_));
+
+    if (procseq == NULLP) return(FALSE);
+
+    procseq->prevp = cmplp->procp->curseqp;
+
+    if (cmplp->procp->curseqp) {
+        cmplp->procp->curseqp->nextp = procseq;
+    }
+
+    cmplp->procp->curseqp = procseq;
+    return(TRUE);
+}
+
+static void __ac_pop_procseq(pac_cmpl_ cmplp)
+{
+    cmplp->procp->curseqp = cmplp->procp->curseqp->prevp;
+
+    if (cmplp->procp->curseqp) {
+        mem_free(cmplp->procp->curseqp->nextp);
+        cmplp->procp->curseqp->nextp = NULLP;
+    }
+}
+
 static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstepb, PTR retdata)
 {
     int retstepb = TRUE, nextidx, curidx, count, endpos, startpos, prevmatch;
@@ -842,7 +876,7 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
                         retstepb = FALSE;
                         break;
                     }
-                    else if (cmplhndp->procp->endproc) {
+                    else if (cmplhndp->procp->endproc || (cmplhndp->procp->curseqp && cmplhndp->procp->curseqp->endseq)) {
                         break;
                     }
                 }
@@ -872,17 +906,50 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
                             retstepb = FALSE;
                             break;
                         }
-                        else if (cmplhndp->procp->endproc) {
+                        else if (cmplhndp->procp->endproc || (cmplhndp->procp->curseqp && cmplhndp->procp->curseqp->endseq)) {
                             break;
                         }
                     }
 
-                    if (cmplhndp->procp->endproc || !retstepb) {
+                    if (cmplhndp->procp->endproc || (cmplhndp->procp->curseqp && cmplhndp->procp->curseqp->endseq) || !retstepb) {
                         break;
                     }
                 }
             }
             cmplhndp->curidx = endpos;
+            break;
+
+        case STEP_DEF_PROCSEQ:
+            retstepb = FALSE;
+            if (!__ac_push_procseq(cmplhndp)) {
+                ac_error(ERROR_MEMORY_ALLOC, "procseq");
+                retstepb = FALSE;
+                break;
+            }
+            endpos = cmplhndp->prcdtx[cmplhndp->curidx++];
+            startpos = cmplhndp->curidx;
+            while (TRUE) {
+                retstepb  = TRUE;
+                cmplhndp->curidx = startpos;
+                cmplhndp->procp->curseqp->recall = FALSE;
+                while (cmplhndp->curidx < endpos) {
+                    /* Get sequence step */
+                    stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
+                    if (!__ac_exec_proc_step(cmplhndp, stepdef)) {
+                        retstepb = FALSE;
+                        break;
+                    }
+                    else if (cmplhndp->procp->endproc || cmplhndp->procp->curseqp->endseq) {
+                        break;
+                    }
+                }
+
+                if (!cmplhndp->procp->curseqp->recall) {
+                    break;
+                }
+            }
+            cmplhndp->curidx = endpos;
+            __ac_pop_procseq(cmplhndp);
             break;
 
         default:
@@ -929,10 +996,32 @@ static int __ac_exec_proc_step(pac_cmpl_ cmplhndp, e_step_def_ stepdef)
             }
             return(TRUE);
 
-        default :
-            return(FALSE);
+        case STEP_EXT_BREAK_IF:
+            if (cmplhndp->procp->curseqp == NULLP) {
+                ac_error(AC_UNEXPECTED_STEP, stepdef);
+                cmplhndp->fatalerrb = TRUE;
+                return(FALSE);
+            }
+            else if (__ac_exec_stat(cmplhndp, extdef, FALSE, NULLP)) {
+                cmplhndp->procp->curseqp->endseq = TRUE;
+            }
+            return(TRUE);
+
+        case STEP_EXT_RECALL_IF:
+            if (cmplhndp->procp->curseqp == NULLP) {
+                ac_error(AC_UNEXPECTED_STEP, stepdef);
+                cmplhndp->fatalerrb = TRUE;
+                return(FALSE);
+            }
+            else if (__ac_exec_stat(cmplhndp, extdef, FALSE, NULLP)) {
+                cmplhndp->procp->curseqp->endseq = TRUE;
+                cmplhndp->procp->curseqp->recall = TRUE;
+            }
+            return(TRUE);           
     }
 
+    ac_error(AC_UNEXPECTED_STEP, stepdef);
+    cmplhndp->fatalerrb = TRUE;
     return(FALSE);
 }
 
@@ -982,13 +1071,6 @@ static int __ac_exec_proc(pac_cmpl_ cmplhndp, int procindx, PTR retdata)
 static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata)
 {
     switch (step) {
-        case AC_STEP_EXECPROC :
-            if (cmplhndp->modedebug) {
-                ac_error(AC_UNEXPECTED_STEP, AC_STEP_EXECPROC);
-                return(FALSE);
-            }
-
-            return(__ac_exec_proc(cmplhndp, *(int *)stepdata, retdata));
             
         case AC_STEP_IDENT :
             if (cmplhndp->curtoken.type == AC_TOKEN_IDENT) {
@@ -1021,6 +1103,7 @@ static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata
         case AC_STEP_SYMBOL:
             if (!cmplhndp->modedebug) {
                 ac_error(AC_UNEXPECTED_STEP, AC_STEP_SYMBOL);
+                cmplhndp->fatalerrb = TRUE;
                 return(FALSE);
             }
             else if (cmplhndp->curtoken.type == AC_TOKEN_SYMBOL) {
@@ -1109,6 +1192,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
             case AC_STEP_APPEND_AND:
                 if (!checkstepb) {
                     ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_AND);
+                    cmplp->fatalerrb = TRUE;
                     __ac_end_stat(cmplhndp);
                     va_end(args);
                     return(FALSE);
@@ -1123,6 +1207,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
             case AC_STEP_APPEND_OR:
                 if (checkstepb) {
                     ac_error(AC_UNEXPECTED_STEP, AC_STEP_APPEND_OR);
+                    cmplp->fatalerrb = TRUE; 
                     __ac_end_stat(cmplhndp);
                     va_end(args);
                     return(FALSE);
