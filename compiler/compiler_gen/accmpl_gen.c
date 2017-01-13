@@ -84,14 +84,18 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             break;
 
         case STEP_TYPE_PROCSEQ:
-            tab[(*index)++] = STEP_DEF_PROCSEQ;
-            endpos = (*index)++;
+            if (step->stepflagb) {
+                tab[(*index)++] = STEP_DEF_PROCSEQ;
+                endpos = (*index)++;
+            }
             substep = step->childp;
             while (substep) {
                 ac_add_step(cmplgenp, substep, -1, STEP_EXT_NA, tab, index);
                 substep = substep->nextp;
             }
-            tab[endpos] = *index;
+            if (step->stepflagb) {
+                tab[endpos] = *index;
+            }
             break;
 
         case STEP_TYPE_PROC_ACCEPT:
