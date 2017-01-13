@@ -83,10 +83,10 @@ typedef struct proc_{
 } ac_proc_, *pac_proc_;
 
 typedef struct cmplgen_ {
-    char          *module_name;
-    int       procseq;
-    int           seqidx;
-    pac_proc_     proc_listp;
+    char           *module_name;
+    int            procseq;
+    int            seqidx;
+    pac_proc_      proc_listp;
     pac_data_list_ keyword_listp;
     pac_data_list_ token_listp;
     pac_data_list_ headers;
