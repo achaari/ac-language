@@ -45,13 +45,12 @@ static char *ac_get_str(pac_data_list_ strlistp, int index)
 static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab, int *indx, int level, s_stat_desc_ stat, int maxendl, FILE *outputp)
 {
     const char *__tabs = "                                                                            ";
-    static e_step_def_ prevstp;
     int tablidx = strlen(__tabs) - level * 4;
     e_step_ext_ extl;
     e_step_def_ extdef;
     char *token;
     
-    int endl, idx;
+    int endl, idx, prevseqidx;
 
     switch (stepdef) {
         case STEP_DEF_ENDPROC:
@@ -59,11 +58,11 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         case STEP_DEF_PROCSEQ_RECALL:
-            fprintf(outputp, "%scontinue;\n", &__tabs[tablidx]); 
+            fprintf(outputp, "%sgoto __procseq_%d_beg;\n", &__tabs[tablidx], cmplgenp->seqidx);
             break;
 
         case STEP_DEF_PROCSEQ_BREAK:
-            fprintf(outputp, "%sbreak;\n", &__tabs[tablidx]);  
+            fprintf(outputp, "%sgoto __procseq_%d_end;\n", &__tabs[tablidx], cmplgenp->seqidx);
             break;
 
         case STEP_DEF_EXECPROC:
@@ -136,32 +135,22 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         case STEP_DEF_PROCSEQ:
-            fprintf(outputp, "\n%s__ac_exec_step(BEG_PROCSEQ);\n", &__tabs[tablidx]);
-            fprintf(outputp, "%swhile (__ac_pocess_next(cmplhndp)) {\n", &__tabs[tablidx]); 
+            prevseqidx = cmplgenp->seqidx;
+            cmplgenp->seqidx = cmplgenp->procseq++;
+            fprintf(outputp, "\n%s__procseq_%d_beg:\n%s{\n", &__tabs[tablidx], cmplgenp->seqidx, &__tabs[tablidx]);
             endl = pxtab[(*indx)++];
             while (*indx < endl) {
-                if (*indx == endl - 1 && pxtab[(*indx)] == STEP_DEF_PROCSEQ_RECALL) {
-                    prevstp = STEP_DEF_PROCSEQ_RECALL;
-                    (*indx)++;
-                }
-                else {
-                    ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, endl, outputp);
-                }
+                ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, endl, outputp);
             }
 
-            if (prevstp != STEP_DEF_PROCSEQ_RECALL && prevstp != STEP_DEF_PROCSEQ_BREAK) {
-                fprintf(outputp, "%sbreak;\n%s}\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
-            }
-            else {
-                fprintf(outputp, "%s}\n", &__tabs[tablidx]);
-            }
-            fprintf(outputp, "%s__ac_exec_step(END_PROCSEQ);\n", &__tabs[tablidx]);
+            fprintf(outputp, "%s}\n%s__procseq_%d_end:\n", &__tabs[tablidx], &__tabs[tablidx], cmplgenp->seqidx);
+            cmplgenp->seqidx = prevseqidx;
             break;
 
         case STEP_DEF_OPTSEQ:
         case STEP_DEF_OPTLOOP:
             endl = pxtab[(*indx)++];
-            fprintf(outputp, "\n");
+
             ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level, (stepdef == STEP_DEF_OPTSEQ) ? STAT_DESC_CHECK : STAT_DESC_LOOP, 0, outputp);
             if (stepdef == STEP_DEF_OPTLOOP && pxtab[(*indx)] == STEP_DEF_NOOP) {
                 fprintf(outputp, "%s;\n", &__tabs[tablidx - 4]);
@@ -206,12 +195,8 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             }
 
             /* Do not execute AND operator */
-            prevstp = stepdef;
             return;
     }
-
-    /* Set previous step */
-    prevstp = stepdef;
 
     if (!stat && ac_is_simple_step(stepdef)) {
         /* Process AND operator for consecutiv simple steps */
