@@ -182,11 +182,11 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
                         break;
                     case STEP_EXT_BREAK_IF:
                         ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_CHECK, 0, outputp);
-                        fprintf(outputp, "%sbreak;\n%s}\n\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
+                        fprintf(outputp, "%sgoto __procseq_%d_end;\n%s}\n\n", &__tabs[tablidx - 4], cmplgenp->seqidx, &__tabs[tablidx]);
                         break;
                     case STEP_EXT_RECALL_IF:
                         ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_CHECK, 0, outputp);
-                        fprintf(outputp, "%scontinue;\n%s}\n\n", &__tabs[tablidx - 4], &__tabs[tablidx]);
+                        fprintf(outputp, "%sgoto __procseq_%d_beg;\n%s}\n\n", &__tabs[tablidx - 4], cmplgenp->seqidx, &__tabs[tablidx]);
                         break;
                 }
             }
