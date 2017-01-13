@@ -35,7 +35,6 @@ AC_EXTERN int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp);
 AC_EXTERN int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...);
 AC_EXTERN int __ac_end_proc(p_accmpl_ cmplhndp);
 AC_EXTERN int __ac_stop_proc(p_accmpl_ cmplhndp);
-AC_EXTERN int __ac_pocess_next(p_accmpl_ cmplhndp);
 
 #define __ac_proc_step(mand, ...)  __ac_process_step(cmplhndp, mand, __VA_ARGS__, AC_STEP_END_EXEC)
 #define __ac_check_step(stat, ...) __ac_proc_step(FALSE, stat, __VA_ARGS__)
