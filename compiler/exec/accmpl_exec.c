@@ -50,14 +50,17 @@ typedef struct token_ {
     } data;
 } ac_token_, *pac_token_;
 
-typedef struct file_ {
-    char *code;
+typedef struct filepos_ {
     char *curpos;
-    char *name;
     int  line;
     int  newline;
     char *firstpos;
-    char *deeppos;
+} ac_filepos_, *pac_filepos_;
+
+typedef struct file_ {
+    char        *code;
+    char        *name;
+    ac_filepos_ filepos;
 } ac_file_, *pac_file_;
 
 typedef struct stat_ {
@@ -79,7 +82,7 @@ typedef struct proc_ {
     int          one_matche;
     int          endproc;
     const char   *names;
-    char         *start_pos;
+    ac_filepos_  start_pos;
     int          start_idx;
     pac_procseq_ curseqp;
     struct proc_ *nextp;
@@ -194,7 +197,7 @@ int __ac_init_proc(p_accmpl_ cmplhndp, const char *procname)
     procp->stat      = TRUE;
 
     /* Save current position */
-    procp->start_pos = cmplp->flp->curpos;
+    mem_copy(&cmplp->flp->filepos, &procp->start_pos, sizeof(ac_filepos_));
 
     if (cmplp->modedebug) {
         ac_log("Start PROC : '%s'\n", procname);
@@ -213,9 +216,9 @@ static void __ac_pop_proc(pac_cmpl_ cmplp)
     }
 }
 
-static void __ac_reset_pos(pac_cmpl_ cmplp, char *curpos)
+static void __ac_reset_pos(pac_cmpl_ cmplp, pac_filepos_ curpos)
 {
-    if (cmplp->flp->curpos != curpos) {
+    if (curpos == NULLP || cmplp->flp->filepos.curpos != curpos->curpos) {
         if (cmplp->curtoken.type == AC_TOKEN_IDENT || cmplp->curtoken.type == AC_TOKEN_STRING) {
             mem_free(cmplp->curtoken.data.strs);
             cmplp->curtoken.data.strs = NULLP;
@@ -223,7 +226,7 @@ static void __ac_reset_pos(pac_cmpl_ cmplp, char *curpos)
         cmplp->curtoken.type = AC_TOKEN_NA;
 
         if (curpos) {
-            cmplp->flp->curpos = curpos;
+            mem_copy(curpos, &cmplp->flp->filepos, sizeof(ac_filepos_));
         }
     }
 }
@@ -241,7 +244,7 @@ int __ac_end_proc(p_accmpl_ cmplhndp)
     }
     else if (! cmplp->procp->stat) {
         /* reset previous position */
-        __ac_reset_pos(cmplp, cmplp->procp->start_pos);
+        __ac_reset_pos(cmplp, &cmplp->procp->start_pos);
     }
 
     if (cmplp->modedebug) {
@@ -256,7 +259,7 @@ int __ac_stop_proc(p_accmpl_ cmplhndp)
     pac_cmpl_ cmplp = cmplhndp; 
     
     /* reset token and position */
-    __ac_reset_pos(cmplp, cmplp->procp->start_pos);
+    __ac_reset_pos(cmplp, &cmplp->procp->start_pos);
 
     if (cmplp->procp->one_matche) {
         if (cmplp->modedebug) {
@@ -323,14 +326,11 @@ int __ac_pocess_next(p_accmpl_ cmplhndp)
 
 static void __ac_newline(pac_cmpl_ cmplhndp, int resetline)
 {
-    if (cmplhndp->flp->curpos > cmplhndp->flp->deeppos) {
-        cmplhndp->flp->deeppos = cmplhndp->flp->curpos;
-        cmplhndp->flp->line++;
-    }
-
+    cmplhndp->flp->filepos.line++;
+    
     if (! resetline) {
-        cmplhndp->flp->newline  = TRUE;
-        cmplhndp->flp->firstpos = NULLP;
+        cmplhndp->flp->filepos.newline = TRUE;
+        cmplhndp->flp->filepos.firstpos = NULLP;
     }
 }
 
@@ -359,9 +359,11 @@ static int __ac_openfile(pac_cmpl_ cmplhndp, const char *filename)
     cmplhndp->flp = mem_get(sizeof(ac_file_));
     if (! cmplhndp->flp) { mem_free(flc);  return(FALSE); }
 
-    cmplhndp->flp->code   = flc;
-    cmplhndp->flp->curpos = cmplhndp->flp->code;
-    cmplhndp->flp->name   = st_dup(filename);
+    cmplhndp->flp->code = flc;
+    cmplhndp->flp->name = st_dup(filename);
+
+    /* Set start position */
+    cmplhndp->flp->filepos.curpos = cmplhndp->flp->code;
     
     __ac_newline(cmplhndp, TRUE);
 
@@ -415,7 +417,7 @@ static int __ac_check_token(pac_cmpl_ cmplhndp, int *indexl)
 {
     int i = 0, foundi = -1, low = 0, high = cmplhndp->nbtoken - 1;
 
-    char checkchr = *cmplhndp->flp->curpos;
+    char checkchr = *cmplhndp->flp->filepos.curpos;
 
     if (cmplhndp->token == NULLP) {
         return(FALSE);
@@ -449,9 +451,9 @@ static int __ac_check_token(pac_cmpl_ cmplhndp, int *indexl)
     /* Get First Token */
     i = foundi;
     while (i >= 0) {
-        if (! strncmp(cmplhndp->token[i], cmplhndp->flp->curpos, strlen(cmplhndp->token[i]))) {
+        if (! strncmp(cmplhndp->token[i], cmplhndp->flp->filepos.curpos, strlen(cmplhndp->token[i]))) {
             *indexl = i;
-            cmplhndp->flp->curpos += strlen(cmplhndp->token[i]);
+            cmplhndp->flp->filepos.curpos += strlen(cmplhndp->token[i]);
             return(TRUE);
         }
         else if (cmplhndp->token[i][0] != checkchr) {
@@ -463,9 +465,9 @@ static int __ac_check_token(pac_cmpl_ cmplhndp, int *indexl)
 
     i = foundi + 1;
     while (i < cmplhndp->nbtoken) {
-        if (! strncmp(cmplhndp->token[i], cmplhndp->flp->curpos, strlen(cmplhndp->token[i]))) {
+        if (! strncmp(cmplhndp->token[i], cmplhndp->flp->filepos.curpos, strlen(cmplhndp->token[i]))) {
             *indexl = i;
-            cmplhndp->flp->curpos += strlen(cmplhndp->token[i]);
+            cmplhndp->flp->filepos.curpos += strlen(cmplhndp->token[i]);
             return(TRUE);
         }
         else if (cmplhndp->token[i][0] != checkchr) {
@@ -519,24 +521,24 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
     int escape = FALSE, reuseb = FALSE, isfloatb = FALSE;
     char push, chr, *tmppos, *idents;
 
-    if (_is_end(*cmplhndp->flp->curpos)) {
+    if (_is_end(*cmplhndp->flp->filepos.curpos)) {
         return(FALSE);
     }
     
     while (TRUE) {
         /* Skip emply lines */
-        if (*cmplhndp->flp->curpos == '\\') {
-            cmplhndp->flp->curpos++;
+        if (*cmplhndp->flp->filepos.curpos == '\\') {
+            cmplhndp->flp->filepos.curpos++;
             escape = TRUE;
         }
 
-        if (*cmplhndp->flp->curpos == '\r') {
-            cmplhndp->flp->curpos++;
+        if (*cmplhndp->flp->filepos.curpos == '\r') {
+            cmplhndp->flp->filepos.curpos++;
         }
 
-        if (*cmplhndp->flp->curpos == '\n') {
+        if (*cmplhndp->flp->filepos.curpos == '\n') {
             __ac_newline(cmplhndp, !escape);
-            cmplhndp->flp->curpos++;
+            cmplhndp->flp->filepos.curpos++;
             escape = FALSE;
             continue;
         }
@@ -550,44 +552,44 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
     }
 
     /* Get First Non whitespace */
-    while (_is_blank(*cmplhndp->flp->curpos)) {
-        cmplhndp->flp->curpos++;
+    while (_is_blank(*cmplhndp->flp->filepos.curpos)) {
+        cmplhndp->flp->filepos.curpos++;
         reuseb = TRUE;
     }
 
     /* Escape comments */
-    if (*cmplhndp->flp->curpos == '/') {
-        if (*(cmplhndp->flp->curpos + 1) == '/') {
-            cmplhndp->flp->curpos += 2;
+    if (*cmplhndp->flp->filepos.curpos == '/') {
+        if (*(cmplhndp->flp->filepos.curpos + 1) == '/') {
+            cmplhndp->flp->filepos.curpos += 2;
 
-            while (!_is_end(*cmplhndp->flp->curpos)) {
-                if (*cmplhndp->flp->curpos == '\n') {
-                    if (*(cmplhndp->flp->curpos - 1) != '\\') {
+            while (!_is_end(*cmplhndp->flp->filepos.curpos)) {
+                if (*cmplhndp->flp->filepos.curpos == '\n') {
+                    if (*(cmplhndp->flp->filepos.curpos - 1) != '\\') {
                         break;
                     }
                     else {
                         __ac_newline(cmplhndp, TRUE);
                     }
                 }
-                cmplhndp->flp->curpos++;
+                cmplhndp->flp->filepos.curpos++;
             }
 
             /* Get next code */
             reuseb = TRUE;
         }
-        else if (*(cmplhndp->flp->curpos + 1) == '*') {
-            cmplhndp->flp->curpos += 2;
+        else if (*(cmplhndp->flp->filepos.curpos + 1) == '*') {
+            cmplhndp->flp->filepos.curpos += 2;
 
-            while (!_is_end(*cmplhndp->flp->curpos)) {
-                if (*cmplhndp->flp->curpos == '\n') {
+            while (!_is_end(*cmplhndp->flp->filepos.curpos)) {
+                if (*cmplhndp->flp->filepos.curpos == '\n') {
                     __ac_newline(cmplhndp, TRUE);
                 }
-                else if (*cmplhndp->flp->curpos == '*' && *(cmplhndp->flp->curpos + 1) == '/') {
-                    cmplhndp->flp->curpos += 2;
+                else if (*cmplhndp->flp->filepos.curpos == '*' && *(cmplhndp->flp->filepos.curpos + 1) == '/') {
+                    cmplhndp->flp->filepos.curpos += 2;
                     break;
                 }
 
-                cmplhndp->flp->curpos++;
+                cmplhndp->flp->filepos.curpos++;
             }
 
             /* Get next code */
@@ -599,54 +601,54 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
         return(__ac_get_next_token(cmplhndp));
     }
 
-    if (_is_end(*cmplhndp->flp->curpos)) {
+    if (_is_end(*cmplhndp->flp->filepos.curpos)) {
         return(FALSE);
     }
 
     /* Initialize new token */
     mem_reset(&cmplhndp->curtoken, sizeof(ac_token_));
 
-    if (cmplhndp->flp->newline) {
+    if (cmplhndp->flp->filepos.newline) {
         cmplhndp->curtoken.innewline = TRUE;
-        cmplhndp->flp->firstpos = cmplhndp->flp->curpos;
-        cmplhndp->flp->newline  = FALSE;
+        cmplhndp->flp->filepos.firstpos = cmplhndp->flp->filepos.curpos;
+        cmplhndp->flp->filepos.newline = FALSE;
     }
        
-    cmplhndp->curtoken.isfirst = (cmplhndp->flp->firstpos == cmplhndp->flp->curpos);
-    cmplhndp->curtoken.line = cmplhndp->flp->line;
+    cmplhndp->curtoken.isfirst = (cmplhndp->flp->filepos.firstpos == cmplhndp->flp->filepos.curpos);
+    cmplhndp->curtoken.line = cmplhndp->flp->filepos.line;
 
-    if (*cmplhndp->flp->curpos == '\'') {
-        cmplhndp->flp->curpos++;
+    if (*cmplhndp->flp->filepos.curpos == '\'') {
+        cmplhndp->flp->filepos.curpos++;
 
-        if (_is_eol(*cmplhndp->flp->curpos)) {
+        if (_is_eol(*cmplhndp->flp->filepos.curpos)) {
             ac_error(NEWLINE_IN_CONSTANT);
             return(FALSE);
         }
 
-        if (*cmplhndp->flp->curpos == '\\') {
-            cmplhndp->flp->curpos++;
-            if (!_is_esc_seq(*cmplhndp->flp->curpos)) {
+        if (*cmplhndp->flp->filepos.curpos == '\\') {
+            cmplhndp->flp->filepos.curpos++;
+            if (!_is_esc_seq(*cmplhndp->flp->filepos.curpos)) {
                 ac_warning(UNRECOGNIZED_CHARACTER_ESCAPE_SEQUENCE);
                 chr = '\\';
             }
             else {
-                chr = __get_seq_str(*cmplhndp->flp->curpos);
+                chr = __get_seq_str(*cmplhndp->flp->filepos.curpos);
             }
         }
         else {
-            chr = *cmplhndp->flp->curpos;
+            chr = *cmplhndp->flp->filepos.curpos;
         }
 
-        cmplhndp->flp->curpos++;
+        cmplhndp->flp->filepos.curpos++;
 
-        if (*cmplhndp->flp->curpos != '\'') {
+        if (*cmplhndp->flp->filepos.curpos != '\'') {
             ac_warning(CHAR_TOO_LONG);
-            while (*cmplhndp->flp->curpos != '\'') {
-                if (_is_eol(*cmplhndp->flp->curpos)) {
+            while (*cmplhndp->flp->filepos.curpos != '\'') {
+                if (_is_eol(*cmplhndp->flp->filepos.curpos)) {
                     ac_error(NEWLINE_IN_CONSTANT);
                     return(FALSE);
                 }
-                cmplhndp->flp->curpos++;
+                cmplhndp->flp->filepos.curpos++;
             }
         }
 
@@ -654,51 +656,51 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
         cmplhndp->curtoken.data.chr = chr;
 
         /* End of string */
-        cmplhndp->flp->curpos++;
+        cmplhndp->flp->filepos.curpos++;
     }
-    else if (*cmplhndp->flp->curpos == '"') {
-        tmppos = ++cmplhndp->flp->curpos;
+    else if (*cmplhndp->flp->filepos.curpos == '"') {
+        tmppos = ++cmplhndp->flp->filepos.curpos;
 
-        while (*cmplhndp->flp->curpos != '\"') {
-            if (_is_eol(*cmplhndp->flp->curpos)) {
+        while (*cmplhndp->flp->filepos.curpos != '\"') {
+            if (_is_eol(*cmplhndp->flp->filepos.curpos)) {
                 ac_error(NEWLINE_IN_CONSTANT);
                 return(FALSE); 
             }
-            else if (*cmplhndp->flp->curpos == '\\') {
-                cmplhndp->flp->curpos++;
-                if (*cmplhndp->flp->curpos == '\n') {
+            else if (*cmplhndp->flp->filepos.curpos == '\\') {
+                cmplhndp->flp->filepos.curpos++;
+                if (*cmplhndp->flp->filepos.curpos == '\n') {
                     __ac_newline(cmplhndp, TRUE);
                 }
                 else {
-                    if (!_is_esc_seq(*cmplhndp->flp->curpos)) {
+                    if (!_is_esc_seq(*cmplhndp->flp->filepos.curpos)) {
                         ac_warning(UNRECOGNIZED_CHARACTER_ESCAPE_SEQUENCE);
                     }   
                 }
             }
-            cmplhndp->flp->curpos++;        
+            cmplhndp->flp->filepos.curpos++;
         }
                 
-        push = *cmplhndp->flp->curpos;
-        *cmplhndp->flp->curpos = '\0';
+        push = *cmplhndp->flp->filepos.curpos;
+        *cmplhndp->flp->filepos.curpos = '\0';
         idents = st_dup(tmppos);
-        *cmplhndp->flp->curpos = push;
+        *cmplhndp->flp->filepos.curpos = push;
 
         cmplhndp->curtoken.type = AC_TOKEN_STRING;
         cmplhndp->curtoken.data.strs = idents;
 
         /* End of string */
-        cmplhndp->flp->curpos++;
+        cmplhndp->flp->filepos.curpos++;
     }
-    else if (_is_debident(*cmplhndp->flp->curpos)) {
-        tmppos = cmplhndp->flp->curpos;
-        while (_is_ident(*cmplhndp->flp->curpos)) {
-            cmplhndp->flp->curpos++;
+    else if (_is_debident(*cmplhndp->flp->filepos.curpos)) {
+        tmppos = cmplhndp->flp->filepos.curpos;
+        while (_is_ident(*cmplhndp->flp->filepos.curpos)) {
+            cmplhndp->flp->filepos.curpos++;
         }
 
-        push = *cmplhndp->flp->curpos;
-        *cmplhndp->flp->curpos = '\0';
+        push = *cmplhndp->flp->filepos.curpos;
+        *cmplhndp->flp->filepos.curpos = '\0';
         idents = st_dup(tmppos);
-        *cmplhndp->flp->curpos = push;
+        *cmplhndp->flp->filepos.curpos = push;
 
         if (!idents) {
             ac_error(ERROR_MEMORY_ALLOC, "idents");
@@ -714,24 +716,24 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
             cmplhndp->curtoken.data.strs = idents;
         }
     }
-    else if (_is_digit(*cmplhndp->flp->curpos)) {
-        tmppos = cmplhndp->flp->curpos;
+    else if (_is_digit(*cmplhndp->flp->filepos.curpos)) {
+        tmppos = cmplhndp->flp->filepos.curpos;
 
-        while (_is_digit(*cmplhndp->flp->curpos)) {
-            cmplhndp->flp->curpos++;
+        while (_is_digit(*cmplhndp->flp->filepos.curpos)) {
+            cmplhndp->flp->filepos.curpos++;
         }
 
-        if (*cmplhndp->flp->curpos == '.') {
+        if (*cmplhndp->flp->filepos.curpos == '.') {
             isfloatb = TRUE;
-            cmplhndp->flp->curpos++;
+            cmplhndp->flp->filepos.curpos++;
 
-            while (_is_digit(*cmplhndp->flp->curpos)) {
-                cmplhndp->flp->curpos++;
+            while (_is_digit(*cmplhndp->flp->filepos.curpos)) {
+                cmplhndp->flp->filepos.curpos++;
             }
         }
 
-        push = *cmplhndp->flp->curpos;
-        *cmplhndp->flp->curpos = '\0';
+        push = *cmplhndp->flp->filepos.curpos;
+        *cmplhndp->flp->filepos.curpos = '\0';
 
         if (isfloatb) {
             cmplhndp->curtoken.type = AC_TOKEN_FLOAT;
@@ -742,15 +744,15 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
             cmplhndp->curtoken.data.intl = atoi(tmppos);
         }
 
-        *cmplhndp->flp->curpos = push;
+        *cmplhndp->flp->filepos.curpos = push;
     }
     else if (__ac_check_token(cmplhndp, &cmplhndp->curtoken.data.intl)) {
         cmplhndp->curtoken.type = AC_TOKEN_TOKEN;
     }
     else {
         cmplhndp->curtoken.type = AC_TOKEN_SYMBOL; 
-        cmplhndp->curtoken.data.chr = *cmplhndp->flp->curpos;
-        cmplhndp->flp->curpos++;
+        cmplhndp->curtoken.data.chr = *cmplhndp->flp->filepos.curpos;
+        cmplhndp->flp->filepos.curpos++;
     }
 
     return(TRUE);
@@ -1004,6 +1006,7 @@ static int __ac_exec_proc_step(pac_cmpl_ cmplhndp, e_step_def_ stepdef)
             }
             else if (__ac_exec_stat(cmplhndp, extdef, FALSE, NULLP)) {
                 cmplhndp->procp->curseqp->endseq = TRUE;
+                cmplhndp->procp->curseqp->recall = FALSE;
             }
             return(TRUE);
 
@@ -1137,21 +1140,23 @@ static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata
 
 static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata, PTR retdata)
 {
-    char *curpos; 
+    ac_filepos_ start_pos;
+
+    mem_reset(&start_pos, sizeof(ac_filepos_));
     
     if (cmplhndp->curtoken.type == AC_TOKEN_NA || cmplhndp->curtoken.consumed) {
-        if (_is_end(*cmplhndp->flp->curpos) || !__ac_next_token(cmplhndp)) {
+        if (_is_end(*cmplhndp->flp->filepos.curpos) || !__ac_next_token(cmplhndp)) {
             cmplhndp->endread = TRUE;
             return(FALSE);
         }
     }
 
     /* Save current position */
-    curpos = cmplhndp->flp->curpos;
+    mem_copy(&cmplhndp->flp->filepos, &start_pos, sizeof(ac_filepos_));
 
     if (! __ac_check_one_step(cmplhndp, step, stepdata, retdata)) {
         /* reset position */
-        __ac_reset_pos(cmplhndp, curpos);
+        __ac_reset_pos(cmplhndp, &start_pos);
 
         return(FALSE);
     }
@@ -1179,7 +1184,7 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
         
         retstepb = TRUE;
 
-        if (step > AC_STEP_END_PROCSEQ) {
+        if (step >= AC_STEP_EXECPROC) {
             /* Get Step DATA */
             datap = va_arg(args, PTR);
         }
@@ -1291,11 +1296,6 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
                 retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_LITERAL, NULLP, datap);
                 break;
 
-            case AC_STEP_BEG_PROCSEQ:
-            case AC_STEP_END_PROCSEQ:
-                /* To Be implimented */
-                break;
-
             default :
                 va_end(args);
                 __ac_end_stat(cmplhndp);
@@ -1346,28 +1346,28 @@ static void __ac_print_token(pac_cmpl_ cmpl, const char *prefix)
 
     switch (cmpl->curtoken.type) {
         case AC_TOKEN_IDENT:
-            fprintf(cmpl->logp, "%sIdent : %s (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->flp->line);
+            fprintf(cmpl->logp, "%sIdent : %s (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->flp->filepos.line);
             break;
         case AC_TOKEN_KEYWORD:
-            fprintf(cmpl->logp, "%sKeyword : %s (%d) \n", prefix, cmpl->keyword[cmpl->curtoken.data.intl], cmpl->flp->line);
+            fprintf(cmpl->logp, "%sKeyword : %s (%d) \n", prefix, cmpl->keyword[cmpl->curtoken.data.intl], cmpl->flp->filepos.line);
             break;
         case AC_TOKEN_TOKEN:
-            fprintf(cmpl->logp, "%sToken : '%s' (%d) \n", prefix, cmpl->token[cmpl->curtoken.data.intl], cmpl->flp->line);
+            fprintf(cmpl->logp, "%sToken : '%s' (%d) \n", prefix, cmpl->token[cmpl->curtoken.data.intl], cmpl->flp->filepos.line);
             break;
         case AC_TOKEN_SYMBOL:
-            fprintf(cmpl->logp, "%sSymbol : '%c' (%d) \n", prefix, cmpl->curtoken.data.chr, cmpl->flp->line);
+            fprintf(cmpl->logp, "%sSymbol : '%c' (%d) \n", prefix, cmpl->curtoken.data.chr, cmpl->flp->filepos.line);
             break;
         case AC_TOKEN_STRING:
-            fprintf(cmpl->logp, "%sString : \"%s\" (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->flp->line);
+            fprintf(cmpl->logp, "%sString : \"%s\" (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->flp->filepos.line);
             break;
         case AC_TOKEN_CHAR:
-            fprintf(cmpl->logp, "%sChar : '%s' (%d) \n", prefix, __ac_print_char(cmpl->curtoken.data.chr), cmpl->flp->line);
+            fprintf(cmpl->logp, "%sChar : '%s' (%d) \n", prefix, __ac_print_char(cmpl->curtoken.data.chr), cmpl->flp->filepos.line);
             break;
         case AC_TOKEN_INTEGER:
-            fprintf(cmpl->logp, "%sInteger : '%d' (%d) \n", prefix, cmpl->curtoken.data.intl, cmpl->flp->line);
+            fprintf(cmpl->logp, "%sInteger : '%d' (%d) \n", prefix, cmpl->curtoken.data.intl, cmpl->flp->filepos.line);
             break;
         case AC_TOKEN_FLOAT:
-            fprintf(cmpl->logp, "%sFloat : '%f' (%d) \n", prefix, cmpl->curtoken.data.dbl, cmpl->flp->line);
+            fprintf(cmpl->logp, "%sFloat : '%f' (%d) \n", prefix, cmpl->curtoken.data.dbl, cmpl->flp->filepos.line);
             break;
     }
 }
