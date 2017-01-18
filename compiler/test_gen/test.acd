@@ -1,3 +1,5 @@
+/* Main CmplProc */
+
 .base_type_dec  : [~(void, int, double, float, char) ;] ident;
 .data_name      : ['*' +] ident ;
 
@@ -8,4 +10,19 @@
 
 .keyword typedef : <data_type_defs> <data_name> [',' <data_name> +] ';';
 
-.main : ['#' ~define ident literal;] [^typedef ;] ;
+.base_int_expression : /*[int ;][char ;]*/ [ literal ;] /* */ '(' <int_expression> ')';
+
+.int_expression : 
+    <base_int_expression> 
+    [%"*/%" <int_expression> +]
+    [%"+-" <int_expression> +]
+    [%("<<", "<<") <int_expression> +]
+    [%(">", "<", "<=", ">=") <int_expression> +]
+    [%("==", "!=") <int_expression> +]
+    ['&' <int_expression> +]
+    ['^' <int_expression> +]
+    ['|' <int_expression> +]
+    ["&&" <int_expression> +]
+    ["||" <int_expression> +] ;
+    
+.main : ['#' ~define ident <int_expression>;] [^typedef ;] ;
