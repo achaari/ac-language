@@ -92,6 +92,22 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             fprintf(outputp, "%s%s%sLITERAL%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
             break;
 
+        case STEP_DEF_INTEGER:
+            fprintf(outputp, "%s%s%sINTEGER%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
+            break;
+
+        case STEP_DEF_CHAR:
+            fprintf(outputp, "%s%s%sCHAR%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
+            break;
+
+        case STEP_DEF_FLOAT:
+            fprintf(outputp, "%s%s%sFLOAT%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
+            break;
+
+        case STEP_DEF_STRING:
+            fprintf(outputp, "%s%s%sSTRING%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
+            break;
+
         case STEP_DEF_GETIDENT:
             fprintf(outputp, "%s%s%sIDENT%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
             break;
