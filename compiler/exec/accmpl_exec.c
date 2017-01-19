@@ -167,6 +167,7 @@ int __ac_compl_exec(p_accmpl_ cmplhndp, const int *cmpldatap, int count)
     mem_free(cmplp->statp);
     cmplp->statp = NULLP;
 
+    __ac_next_token(cmplhndp);
     if (cmplp->curtoken.type != AC_TOKEN_NA) {
         __ac_print_token(cmplhndp, "Unexpected ");
     }
@@ -258,7 +259,7 @@ int __ac_end_proc(p_accmpl_ cmplhndp)
 int __ac_stop_proc(p_accmpl_ cmplhndp)
 {
     pac_cmpl_ cmplp = cmplhndp; 
-    
+        
     /* reset token and position */
     __ac_reset_pos(cmplp, &cmplp->procp->start_pos);
 
@@ -962,6 +963,7 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
                 retstepb  = TRUE;
                 cmplhndp->curidx = startpos;
                 cmplhndp->procp->curseqp->recall = FALSE;
+                cmplhndp->procp->curseqp->endseq = FALSE;
                 while (cmplhndp->curidx < endpos) {
                     /* Get sequence step */
                     stepdef = cmplhndp->prcdtx[cmplhndp->curidx++];
@@ -980,6 +982,16 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
             }
             cmplhndp->curidx = endpos;
             __ac_pop_procseq(cmplhndp);
+            break;
+
+        case STEP_DEF_PROCSEQ_RECALL:
+            cmplhndp->procp->curseqp->endseq = TRUE;
+            cmplhndp->procp->curseqp->recall = TRUE;
+            break;
+
+        case STEP_DEF_PROCSEQ_BREAK:
+            cmplhndp->procp->curseqp->endseq = TRUE;
+            cmplhndp->procp->curseqp->recall = FALSE;
             break;
 
         default:
@@ -1404,6 +1416,7 @@ int __ac_compl_exec_mainproc(p_accmpl_ cmplhndp, __exec prcfctp)
     mem_free(cmplp->statp);
     cmplp->statp = NULLP;
 
+    __ac_next_token(cmplhndp);
     if (cmplp->curtoken.type != AC_TOKEN_NA) {
         __ac_print_token(cmplhndp, "Unexpected ");
     }
