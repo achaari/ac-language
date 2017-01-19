@@ -721,6 +721,18 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
             else if (iseqstr(idents, "literal")) {
                 step = ac_new_step(STEP_TYPE_LITERAL, rootp, curstepp);
             }
+            else if (iseqstr(idents, "int")) {
+                step = ac_new_step(STEP_TYPE_INTEGER, rootp, curstepp);
+            }
+            else if (iseqstr(idents, "char")) {
+                step = ac_new_step(STEP_TYPE_CHAR, rootp, curstepp);
+            }
+            else if (iseqstr(idents, "flaot")) {
+                step = ac_new_step(STEP_TYPE_FLOAT, rootp, curstepp);
+            }
+            else if (iseqstr(idents, "string")) {
+                step = ac_new_step(STEP_TYPE_STRING, rootp, curstepp);
+            }
             else {
                 ac_error(ERROR_UNEXPECTED_IDENT, idents);
                 return(NULLP);
