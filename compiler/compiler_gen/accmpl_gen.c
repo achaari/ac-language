@@ -114,6 +114,22 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             tab[(*index)++] = STEP_DEF_LITERAL + stepext;
             break;
 
+        case STEP_TYPE_INTEGER:
+            tab[(*index)++] = STEP_DEF_INTEGER + stepext;
+            break;
+
+        case STEP_TYPE_CHAR:
+            tab[(*index)++] = STEP_DEF_CHAR + stepext;
+            break;
+
+        case STEP_TYPE_FLOAT:
+            tab[(*index)++] = STEP_DEF_FLOAT + stepext;
+            break;
+
+        case STEP_TYPE_STRING:
+            tab[(*index)++] = STEP_DEF_STRING + stepext;
+            break;
+
         case STEP_TYPE_GETIDENT:
             tab[(*index)++] = STEP_DEF_GETIDENT + stepext;
             break;
