@@ -95,6 +95,7 @@ typedef struct cmpl_ {
     ac_token_  curtoken;
     pac_proc_  procp;
     pac_stat_  statp;
+    int        forceline;
     int        curidx;
     int        endread;
     int        fatalerrb;
@@ -830,6 +831,22 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
             retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_LITERAL, NULLP, NULLP);
             break;
 
+        case STEP_DEF_INTEGER:
+            retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_INTEGER, NULLP, NULLP);
+            break;
+
+        case STEP_DEF_CHAR:
+            retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_CHAR, NULLP, NULLP);
+            break;
+
+        case STEP_DEF_FLOAT:
+            retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_FLOAT, NULLP, NULLP);
+            break;
+
+        case STEP_DEF_STRING:
+            retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_STRING, NULLP, NULLP);
+            break;
+
         case STEP_DEF_TOKEN:
             nextidx = cmplhndp->prcdtx[cmplhndp->curidx++];
             retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, &nextidx, NULLP);
@@ -846,6 +863,17 @@ static int __ac_exec_stat(pac_cmpl_ cmplhndp, e_step_def_ stepdef, int checkstep
             for (curidx = 0; !retstepb && curidx < count; curidx++) {
                 nextidx = cmplhndp->prcdtx[cmplhndp->curidx + curidx];
                 retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_KEYWORD, &nextidx, NULLP);
+            }
+
+            cmplhndp->curidx += count;
+            break;
+
+        case STEP_DEF_MULTI_TOKEN:
+            retstepb = FALSE;
+            count = cmplhndp->prcdtx[cmplhndp->curidx++];
+            for (curidx = 0; !retstepb && curidx < count; curidx++) {
+                nextidx = cmplhndp->prcdtx[cmplhndp->curidx + curidx];
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_TOKEN, &nextidx, NULLP);
             }
 
             cmplhndp->curidx += count;
@@ -1090,6 +1118,30 @@ static int __ac_check_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata
             }
             break;
 
+        case AC_STEP_INTEGER:
+            if (cmplhndp->curtoken.type == AC_TOKEN_INTEGER) {
+                return(__ac_validate_matched(cmplhndp, retdata));
+            }
+            break;
+
+        case AC_STEP_FLOAT:
+            if (cmplhndp->curtoken.type == AC_TOKEN_FLOAT) {
+                return(__ac_validate_matched(cmplhndp, retdata));
+            }
+            break;
+
+        case AC_STEP_CHAR:
+            if (cmplhndp->curtoken.type == AC_TOKEN_CHAR) {
+                return(__ac_validate_matched(cmplhndp, retdata));
+            }
+            break;
+
+        case AC_STEP_STRING:
+            if (cmplhndp->curtoken.type == AC_TOKEN_STRING) {
+                return(__ac_validate_matched(cmplhndp, retdata));
+            }
+            break;
+
         case AC_STEP_TOKEN:
             if (cmplhndp->curtoken.type == AC_TOKEN_TOKEN) {
                 if (cmplhndp->modedebug) {
@@ -1149,6 +1201,11 @@ static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata,
             cmplhndp->endread = TRUE;
             return(FALSE);
         }
+    }
+
+    if (cmplhndp->forceline && cmplhndp->curtoken.innewline) {
+        /* Force the current line */
+        return(FALSE);
     }
 
     /* Save current position */
@@ -1294,6 +1351,22 @@ int __ac_process_step(p_accmpl_ cmplhndp, int checkstepb, e_ac_step_ step, ...)
 
             case AC_STEP_LITERAL:
                 retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_LITERAL, NULLP, datap);
+                break;
+
+            case AC_STEP_INTEGER:
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_INTEGER, NULLP, datap);
+                break;
+
+            case AC_STEP_CHAR:
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_CHAR, NULLP, datap);
+                break;
+
+            case AC_STEP_FLOAT:
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_FLOAT, NULLP, datap);
+                break;
+
+            case AC_STEP_STRING:
+                retstepb = __ac_exec_one_step(cmplhndp, AC_STEP_STRING, NULLP, datap);
                 break;
 
             default :
