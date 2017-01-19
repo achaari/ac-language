@@ -1,0 +1,57 @@
+/* Main CmplProc */
+
+.base_type_dec  : [~(void, int, double, float, char) ;] ident [/* simple macro */ '(' ident ')'];
+.data_name      : ['*' +] ident ;
+
+.struct_one_fld : <data_type_defs> <data_name> ['[' int ']' +] ';' ;
+.struct_fields  : [ident] '{' <struct_one_fld> { ['}' ,] <struct_one_fld> * } ;
+
+.data_type_defs : [~(struct, union) [<struct_fields> ;] ident ;] <base_type_dec> ;
+
+.keyword typedef : <data_type_defs> <data_name> [',' <data_name> +] ';';
+
+.variable :
+    [%"*&"] ident ['[' int ']' +]
+    ['(' [<expression> [',' <expression> +] ] ')']
+    [%(".", "->") <variable> ]
+    ;
+    
+.base_expression : [int ;][char ;][string ;][<variable> ;][%"!+-" <expression> ;] '(' <expression> ')';
+
+.expression : 
+    <base_expression> 
+    [%"*/%" <expression> +]
+    [%"+-" <expression> +]
+    [%("<<", "<<") <expression> +]
+    [%(">", "<", "<=", ">=") <expression> +]
+    [%("==", "!=") <expression> +]
+    ['&' <expression> +]
+    ['^' <expression> +]
+    ['|' <expression> +]
+    ["&&" <expression> +]
+    ["||" <expression> +] 
+    [%("=", "+=", "-+", "*=", "/=", "&=", "|=", "^=", "%=", "<<=", ">>=") <expression> +]
+    ['?' <expression> ':' <expression>]
+    ;
+    
+.preproc :
+    [~include string ;]
+    [~define ident int ;]
+    ;
+    
+  
+.name_declaration : { [~struct ident ,] <base_type_dec> } <data_name> ;
+
+.statement_block : '{' { ['}' ,]  <one_statement> * };
+    
+.one_statement :
+    [';' ;]
+    [<statement_block> ;]
+    [~if '(' <expression> ')' <one_statement> [~else <one_statement> ] ;]
+    [<name_declaration> ['[' int ']' +] { ['=' <expression>] [',' ident ['[' int ']' +] * ] } ';' ;]
+    <expression> ';'
+    ;
+ 
+.function : [~static ] <name_declaration> '(' [<name_declaration> [',' <name_declaration> +] ] ')' [';' ;] <statement_block> ;
+    
+.main : ['#' <preproc> ;] [^typedef ;] <function> ;
