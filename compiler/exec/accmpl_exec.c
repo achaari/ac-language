@@ -36,9 +36,16 @@ typedef enum {
     AC_TOKEN_FLOAT,
 } e_ac_token_;
 
+typedef struct filepos_ {
+    char *curpos;
+    int  line;
+    int  newline;
+    char *firstpos;
+} ac_filepos_, *pac_filepos_;
+
 typedef struct token_ {
     e_ac_token_ type;
-    int         line;
+    ac_filepos_ startpos;
     int         isfirst;
     int         innewline;
     int         consumed;
@@ -49,13 +56,6 @@ typedef struct token_ {
         double dbl;
     } data;
 } ac_token_, *pac_token_;
-
-typedef struct filepos_ {
-    char *curpos;
-    int  line;
-    int  newline;
-    char *firstpos;
-} ac_filepos_, *pac_filepos_;
 
 typedef struct file_ {
     char        *code;
@@ -180,6 +180,16 @@ int __ac_exit_compiler(p_accmpl_ *cmplhndp)
     return(FALSE);
 }
 
+static void __ac_save_pos(pac_cmpl_ cmplhndp, pac_filepos_ startpos)
+{
+    if (cmplhndp->curtoken.type != AC_TOKEN_NA) {
+        mem_copy(&cmplhndp->curtoken.startpos, startpos, sizeof(ac_filepos_));
+    }
+    else {
+        mem_copy(&cmplhndp->flp->filepos, startpos, sizeof(ac_filepos_));
+    }
+}
+
 int __ac_init_proc(p_accmpl_ cmplhndp, const char *procname)
 {
     pac_cmpl_ cmplp = cmplhndp;
@@ -199,7 +209,7 @@ int __ac_init_proc(p_accmpl_ cmplhndp, const char *procname)
     procp->stat      = TRUE;
 
     /* Save current position */
-    mem_copy(&cmplp->flp->filepos, &procp->start_pos, sizeof(ac_filepos_));
+    __ac_save_pos(cmplp, &procp->start_pos);
 
     if (cmplp->modedebug) {
         ac_log("Start PROC : '%s'\n", procname);
@@ -610,14 +620,16 @@ static int __ac_get_next_token(pac_cmpl_ cmplhndp)
     /* Initialize new token */
     mem_reset(&cmplhndp->curtoken, sizeof(ac_token_));
 
+    /* Save start position */
+    mem_copy(&cmplhndp->flp->filepos, &cmplhndp->curtoken.startpos, sizeof(ac_filepos_));
+
     if (cmplhndp->flp->filepos.newline) {
         cmplhndp->curtoken.innewline = TRUE;
         cmplhndp->flp->filepos.firstpos = cmplhndp->flp->filepos.curpos;
         cmplhndp->flp->filepos.newline = FALSE;
-    }
-       
-    cmplhndp->curtoken.isfirst = (cmplhndp->flp->filepos.firstpos == cmplhndp->flp->filepos.curpos);
-    cmplhndp->curtoken.line = cmplhndp->flp->filepos.line;
+    }    
+    
+    cmplhndp->curtoken.isfirst  = (cmplhndp->flp->filepos.firstpos == cmplhndp->flp->filepos.curpos);
 
     if (*cmplhndp->flp->filepos.curpos == '\'') {
         cmplhndp->flp->filepos.curpos++;
@@ -1221,7 +1233,7 @@ static int __ac_exec_one_step(pac_cmpl_ cmplhndp, e_ac_step_ step, PTR stepdata,
     }
 
     /* Save current position */
-    mem_copy(&cmplhndp->flp->filepos, &start_pos, sizeof(ac_filepos_));
+    __ac_save_pos(cmplhndp, &start_pos);
 
     if (! __ac_check_one_step(cmplhndp, step, stepdata, retdata)) {
         /* reset position */
@@ -1432,28 +1444,28 @@ static void __ac_print_token(pac_cmpl_ cmpl, const char *prefix)
 
     switch (cmpl->curtoken.type) {
         case AC_TOKEN_IDENT:
-            fprintf(cmpl->logp, "%sIdent : %s (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->flp->filepos.line);
+            fprintf(cmpl->logp, "%sIdent : %s (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->curtoken.startpos.line);
             break;
         case AC_TOKEN_KEYWORD:
-            fprintf(cmpl->logp, "%sKeyword : %s (%d) \n", prefix, cmpl->keyword[cmpl->curtoken.data.intl], cmpl->flp->filepos.line);
+            fprintf(cmpl->logp, "%sKeyword : %s (%d) \n", prefix, cmpl->keyword[cmpl->curtoken.data.intl], cmpl->curtoken.startpos.line);
             break;
         case AC_TOKEN_TOKEN:
-            fprintf(cmpl->logp, "%sToken : '%s' (%d) \n", prefix, cmpl->token[cmpl->curtoken.data.intl], cmpl->flp->filepos.line);
+            fprintf(cmpl->logp, "%sToken : '%s' (%d) \n", prefix, cmpl->token[cmpl->curtoken.data.intl], cmpl->curtoken.startpos.line);
             break;
         case AC_TOKEN_SYMBOL:
-            fprintf(cmpl->logp, "%sSymbol : '%c' (%d) \n", prefix, cmpl->curtoken.data.chr, cmpl->flp->filepos.line);
+            fprintf(cmpl->logp, "%sSymbol : '%c' (%d) \n", prefix, cmpl->curtoken.data.chr, cmpl->curtoken.startpos.line);
             break;
         case AC_TOKEN_STRING:
-            fprintf(cmpl->logp, "%sString : \"%s\" (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->flp->filepos.line);
+            fprintf(cmpl->logp, "%sString : \"%s\" (%d) \n", prefix, cmpl->curtoken.data.strs, cmpl->curtoken.startpos.line);
             break;
         case AC_TOKEN_CHAR:
-            fprintf(cmpl->logp, "%sChar : '%s' (%d) \n", prefix, __ac_print_char(cmpl->curtoken.data.chr), cmpl->flp->filepos.line);
+            fprintf(cmpl->logp, "%sChar : '%s' (%d) \n", prefix, __ac_print_char(cmpl->curtoken.data.chr), cmpl->curtoken.startpos.line);
             break;
         case AC_TOKEN_INTEGER:
-            fprintf(cmpl->logp, "%sInteger : '%d' (%d) \n", prefix, cmpl->curtoken.data.intl, cmpl->flp->filepos.line);
+            fprintf(cmpl->logp, "%sInteger : '%d' (%d) \n", prefix, cmpl->curtoken.data.intl, cmpl->curtoken.startpos.line);
             break;
         case AC_TOKEN_FLOAT:
-            fprintf(cmpl->logp, "%sFloat : '%f' (%d) \n", prefix, cmpl->curtoken.data.dbl, cmpl->flp->filepos.line);
+            fprintf(cmpl->logp, "%sFloat : '%f' (%d) \n", prefix, cmpl->curtoken.data.dbl, cmpl->curtoken.startpos.line);
             break;
     }
 }
