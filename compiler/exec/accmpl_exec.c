@@ -462,20 +462,14 @@ static int __ac_check_token(pac_cmpl_ cmplhndp, int *indexl)
 
     /* Get First Token */
     i = foundi;
-    while (i >= 0) {
-        if (! strncmp(cmplhndp->token[i], cmplhndp->flp->filepos.curpos, strlen(cmplhndp->token[i]))) {
-            *indexl = i;
-            cmplhndp->flp->filepos.curpos += strlen(cmplhndp->token[i]);
-            return(TRUE);
-        }
-        else if (cmplhndp->token[i][0] != checkchr) {
+    while (i > 0) {
+        if (cmplhndp->token[i - 1][0] != checkchr) {
             break;
         }
-
         i--;
     }
-
-    i = foundi + 1;
+    
+    /* Get Token */
     while (i < cmplhndp->nbtoken) {
         if (! strncmp(cmplhndp->token[i], cmplhndp->flp->filepos.curpos, strlen(cmplhndp->token[i]))) {
             *indexl = i;
