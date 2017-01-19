@@ -182,7 +182,7 @@ int __ac_exit_compiler(p_accmpl_ *cmplhndp)
 
 static void __ac_save_pos(pac_cmpl_ cmplhndp, pac_filepos_ startpos)
 {
-    if (cmplhndp->curtoken.type != AC_TOKEN_NA) {
+    if (cmplhndp->curtoken.type != AC_TOKEN_NA && !cmplhndp->curtoken.consumed) {
         mem_copy(&cmplhndp->curtoken.startpos, startpos, sizeof(ac_filepos_));
     }
     else {
