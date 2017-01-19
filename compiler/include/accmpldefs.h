@@ -16,6 +16,10 @@ typedef enum {
     AC_STEP_SYMBOL,
     AC_STEP_IDENT,
     AC_STEP_LITERAL,
+    AC_STEP_INTEGER,
+    AC_STEP_CHAR,
+    AC_STEP_FLOAT,
+    AC_STEP_STRING
 } e_ac_step_;
 
 typedef enum {
@@ -53,6 +57,10 @@ AC_EXTERN int __ac_stop_proc(p_accmpl_ cmplhndp);
 #define SYMBOL_DATA(d, a)              AC_STEP_SYMBOL, d, a         
 #define IDENT_DATA(d)                  AC_STEP_IDENT, d
 #define LITERAL_DATA(d)                AC_STEP_LITERAL, d
+#define INTEGER_DATA(d)                AC_STEP_INTEGER, d
+#define CHAR_DATA(d)                   AC_STEP_CHAR, d
+#define FLOAT_DATA(d)                  AC_STEP_FLOAT, d
+#define STRING_DATA(d)                 AC_STEP_STRING, d
 
 /* AC Steps Definition */
 #define EXECPROC(a)                    EXECPROC_DATA(NODATA, a)
@@ -62,5 +70,9 @@ AC_EXTERN int __ac_stop_proc(p_accmpl_ cmplhndp);
 #define SYMBOL(a)                      SYMBOL_DATA(NODATA, a)         
 #define IDENT                          IDENT_DATA(NODATA)
 #define LITERAL                        LITERAL_DATA(NODATA)
+#define INTEGER                        INTEGER_DATA(NODATA)
+#define CHAR                           CHAR_DATA(NODATA)
+#define FLOAT                          FLOAT_DATA(NODATA)
+#define STRING                         STRING_DATA(NODATA)
 
 #endif
