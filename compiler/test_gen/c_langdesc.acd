@@ -11,14 +11,18 @@
 .keyword typedef : <data_type_defs> <data_name> [',' <data_name> +] ';';
 
 .variable :
-    [%"*&"] ident ['[' int ']' +]
+    ident ['[' int ']' +]
     ['(' { [')' ,] <expression> [',' <expression> +] ')' } ]
     [%(".", "->") <variable> ]
     ;
     
-.base_expression : [literal ;][~sizeof '(' <variable> ['*'+] ')' ;][<variable> ;][%("!", "+", "-", "++", "--") <expression> ;] '(' <expression> ')';
+.variable_ref : [%"*&"] <variable>;
 
-.variable_type   : [~struct ident ;] <base_type_dec> ;
+.variable_type   : [~(struct, union) ident ;] <base_type_dec> ;
+.sizeof_type     : '(' <variable_type> ['*' +] ')' ;
+.sizeof_variable : '(' <variable> ')';
+
+.base_expression : [literal ;][~sizeof {[<sizeof_variable> ,] <sizeof_type> } ;][<variable_ref> ;][%("!", "+", "-", "++", "--") <expression> ;] '(' <expression> ')';
 
 .cast_expression : '(' <variable_type> ['*' +] ')' <expression> ;
 
