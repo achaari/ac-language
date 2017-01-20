@@ -1,6 +1,6 @@
-/* Main CmplProc */
+/* https://github.com/achaari/ac-language */
 
-.base_type_dec  : [~(void, int, double, float, char) ;] ident [/* simple macro */ '(' ident ')'];
+.base_type_dec  : [~(void, int, double, float, char) ;] ident;
 .data_name      : ['*' +] ident ;
 
 .struct_one_fld : <data_type_defs> <data_name> ['[' int ']' +] ';' ;
@@ -12,14 +12,19 @@
 
 .variable :
     [%"*&"] ident ['[' int ']' +]
-    ['(' [<expression> [',' <expression> +] ] ')']
+    ['(' { [')' ,] <expression> [',' <expression> +] ')' } ]
     [%(".", "->") <variable> ]
     ;
     
-.base_expression : [int ;][char ;][string ;][<variable> ;][%"!+-" <expression> ;] '(' <expression> ')';
+.base_expression : [literal ;][~sizeof '(' <variable> ['*'+] ')' ;][<variable> ;][%("!", "+", "-", "++", "--") <expression> ;] '(' <expression> ')';
+
+.variable_type   : [~struct ident ;] <base_type_dec> ;
+
+.cast_expression : '(' <variable_type> ['*' +] ')' <expression> ;
 
 .expression : 
-    <base_expression> 
+    [<cast_expression> ;]
+    <base_expression> [%("++", "--")]
     [%"*/%" <expression> +]
     [%"+-" <expression> +]
     [%("<<", "<<") <expression> +]
@@ -30,8 +35,8 @@
     ['|' <expression> +]
     ["&&" <expression> +]
     ["||" <expression> +] 
-    [%("=", "+=", "-+", "*=", "/=", "&=", "|=", "^=", "%=", "<<=", ">>=") <expression> +]
     ['?' <expression> ':' <expression>]
+    [%("=", "+=", "-+", "*=", "/=", "&=", "|=", "^=", "%=", "<<=", ">>=") <expression> +]    
     ;
     
 .preproc :
@@ -40,14 +45,22 @@
     ;
     
   
-.name_declaration : { [~struct ident ,] <base_type_dec> } <data_name> ;
+.name_declaration :  <variable_type> <data_name> ;
 
 .statement_block : '{' { ['}' ,]  <one_statement> * };
     
 .one_statement :
     [';' ;]
+    [~(break, continue) ';' ;]
+    [~return [';' ;] <expression> ';' ;]
     [<statement_block> ;]
+    [~while '(' <expression> ')' <one_statement> ;]
     [~if '(' <expression> ')' <one_statement> [~else <one_statement> ] ;]
+    [~switch '(' <expression> ')' '{' 
+        [~case {[int,][char,]ident} ':' { [~break ';' ,] <one_statement> *} +] 
+        [~default ':' <one_statement> { ['}' ,] [~break ';' '}' ,]  <one_statement> *} ;] 
+    '}' ;]
+    [~for '(' {[';' ,] <expression> ';'} {[';' ,] <expression> ';'} {[')' ,] <expression> ')'} <one_statement> ;]
     [<name_declaration> ['[' int ']' +] { ['=' <expression>] [',' ident ['[' int ']' +] * ] } ';' ;]
     <expression> ';'
     ;
