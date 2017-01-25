@@ -94,6 +94,7 @@ typedef struct cmplgen_ {
     pac_proc_      proc_listp;
     pac_data_list_ keyword_listp;
     pac_data_list_ token_listp;
+    pac_data_list_ stepdata_listp;
     pac_data_list_ headers;
 } ac_cmplgen_, *pac_cmplgen_;
 
