@@ -19,7 +19,7 @@ static const char *postfixs[] = { "", ") \n", ")) { \n", ")) { \n", "", "", "" }
 
 static int ac_is_simple_step(e_step_def_ stepdef)
 {
-    if (stepdef >= STEP_DEF_EXECPROC && (stepdef - STEP_DEF_EXECPROC) % 5 == 0) {
+    if (stepdef >= STEP_DEF_EXEC_PROC && (stepdef - STEP_DEF_EXEC_PROC) % 5 == 0) {
         return(TRUE);
     }
     
@@ -48,7 +48,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
     int tablidx = strlen(__tabs) - level * 4;
     e_step_ext_ extl;
     e_step_def_ extdef;
-    char *token;
+    char *token, *strdatap;
     
     int endl, idx, prevseqidx;
 
@@ -65,11 +65,16 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             fprintf(outputp, "%sgoto __procseq_%d_end;\n", &__tabs[tablidx], cmplgenp->seqidx);
             break;
 
-        case STEP_DEF_EXECPROC:
+        case STEP_DEF_EXEC_PROC:
             fprintf(outputp, "%s%s%sEXECPROC(%s)%s", &__tabs[tablidx], prefixs[stat], stats[stat], ac_get_procname(cmplgenp->proc_listp, pxtab[(*indx)++]), postfixs[stat]);
             break;   
 
-        case STEP_DEF_EXECKEYWORD:
+        case STEP_DEF_EXEC_PROC_DATA:
+            strdatap = ac_get_str(cmplgenp->stepdata_listp, pxtab[(*indx)++]);
+            fprintf(outputp, "%s%s%sEXECPROC_DATA(%s, &(%s))%s", &__tabs[tablidx], prefixs[stat], stats[stat], ac_get_procname(cmplgenp->proc_listp, pxtab[(*indx)++]), strdatap, postfixs[stat]);
+            break;
+
+        case STEP_DEF_EXEC_KEYWORD:
             fprintf(outputp, "%s%s%sEXECKEYWORD(KEY(%s))%s", 
                     &__tabs[tablidx], prefixs[stat], stats[stat], 
                     ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)]), 
@@ -77,7 +82,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             (*indx) += 2;
             break;
 
-        case STEP_DEF_EXECONEKEYWORD:
+        case STEP_DEF_EXEC_ONEKEYWORD:
             fprintf(outputp, "%s%s%sEXECKEYWORD(", &__tabs[tablidx], prefixs[stat], stats[stat]);
             endl = pxtab[(*indx)++]; idx = 0;
             while (idx < endl) {
@@ -181,7 +186,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         default:
-            extl = (stepdef - STEP_DEF_EXECPROC) % 5;
+            extl = (stepdef - STEP_DEF_EXEC_PROC) % 5;
             if (extl > 0) {
                 extdef = stepdef - extl;
                 switch (extl) {
@@ -190,7 +195,7 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
                         break;
                     case STEP_EXT_ACCEPT_IF:
                         ac_print_step(cmplgenp, extdef, pxtab, indx, level, STAT_DESC_BEG_CHECK, 0, outputp);
-                        while ((pxtab[(*indx)] - STEP_DEF_EXECPROC) % 5 == STEP_EXT_ACCEPT_IF) {
+                        while ((pxtab[(*indx)] - STEP_DEF_EXEC_PROC) % 5 == STEP_EXT_ACCEPT_IF) {
                             fprintf(outputp, "\n");
                             ac_print_step(cmplgenp, pxtab[(*indx)++] - STEP_EXT_ACCEPT_IF, pxtab, indx, level, STAT_DESC_EXTEND_CHECK_OR, 0, outputp);
                         }
