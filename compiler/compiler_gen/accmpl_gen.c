@@ -2,14 +2,14 @@
 #include "accmpluti.h"
 #include "accmpl.h"
 
-#define CAS_STEP_DEF(ste, def)                                                          \
-    case STEP_TYPE_##ste##_DATA:                                                        \
-        flagdata = TRUE;                                                                \
-    case STEP_TYPE_##ste:                                                               \
-        tab[(*index)++] = (flagdata) ? STEP_DEF_##def##_DATA: STEP_DEF_##def + stepext; \
+#define CAS_STEP_DEF(ste, def)                                                             \
+    case STEP_TYPE_##ste##_DATA:                                                           \
+        flagdata = TRUE;                                                                   \
+    case STEP_TYPE_##ste:                                                                  \
+        tab[(*index)++] = ((flagdata) ? STEP_DEF_##def##_DATA : STEP_DEF_##def) + stepext; \
         if (flagdata) tab[(*index)++] = ac_get_str_index(cmplgenp->stepdata_listp, step->stp_datap);
 
-#define CAS_STEP(step)  CAS_STEP_DEF(step, step)
+#define CAS_STEP(ste)  CAS_STEP_DEF(ste, ste)
 
 char *ac_get_procname(pac_proc_ proc, int index)
 {
