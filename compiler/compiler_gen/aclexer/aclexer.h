@@ -32,8 +32,7 @@ char *get_identstr(p_lexer_ srcp, char *ident);
 int get_string(p_lexer_ srcp, char **codes);
 
 int get_int(p_lexer_ srcp, int *valp);
-char *get_to_code(p_lexer_ srcp, char *startstr, char *tostrs, char *codes, int skipstr);
-char *get_to_code_alloc(p_lexer_ srcp, char *startstr, char *tostrs, int skipstr);
+char *get_next_code(p_lexer_ srcp, char split, char reset);
 char *split_code(p_lexer_ srcp, char *tostrs, char *codep);
 char *split_code_with_alloc(p_lexer_ srcp, char *tostrs);
 
