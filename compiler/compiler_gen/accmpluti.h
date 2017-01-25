@@ -38,6 +38,10 @@ typedef enum {
     DEF_STEP(EXEC_KEYWORD),
     DEF_STEP(EXEC_ONEKEYWORD),
     DEF_STEP(LITERAL),
+    DEF_STEP(INTEGER),
+    DEF_STEP(CHAR),
+    DEF_STEP(FLOAT),
+    DEF_STEP(STRING),
     DEF_STEP(KEYWORD),
     DEF_STEP(MULTI_KEYWORD),
     DEF_STEP(GETIDENT),
@@ -65,6 +69,7 @@ typedef struct step_ {
         char chr;
     } datap;
     int stepflagb;
+    char *stp_datap;
     struct step_ *rootp;
     struct step_ *headp;
     struct step_ *childp;
