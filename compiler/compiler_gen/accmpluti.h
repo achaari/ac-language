@@ -24,7 +24,9 @@ typedef enum {
     PROC_TYPE_KEYWORD
 } e_proc_type_;
 
-#define DEF_STEP(a) STEP_TYPE_##a, STEP_TYPE_ACCEPT_IF_##a,  STEP_TYPE_RECALL_IF_##a, STEP_TYPE_BREAK_IF_##a
+#define DEF_STEP_EXT(a)       STEP_TYPE_##a, STEP_TYPE_ACCEPT_IF_##a,  STEP_TYPE_RECALL_IF_##a, STEP_TYPE_BREAK_IF_##a
+#define DEF_STEP(a)           DEF_STEP_EXT(a), DEF_STEP_EXT(a##_DATA)
+#define DEF_STEP_DATA_EXT     (STEP_TYPE_EXEC_PROC_DATA - STEP_TYPE_EXEC_PROC)
 
 typedef enum {
     STEP_TYPE_NAN = 0,
@@ -45,8 +47,8 @@ typedef enum {
     DEF_STEP(KEYWORD),
     DEF_STEP(MULTI_KEYWORD),
     DEF_STEP(GETIDENT),
-    DEF_STEP(STRCODE),   
-    DEF_STEP(MULTI_STRCODE),
+    DEF_STEP(TOKEN),   
+    DEF_STEP(MULTI_TOKEN),
     DEF_STEP(SYMBOL),
     DEF_STEP(MULTI_SYMBOL)
 } e_step_type_;
