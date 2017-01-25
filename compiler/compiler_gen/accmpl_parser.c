@@ -421,6 +421,7 @@ static pac_step_ ac_step_datap(PTR inputp, pac_step_ stepp)
             return(NULLP);
         }
         stepp->stp_datap = ac_list_add_ordered_str(stepdata, &cmplgen.stepdata_listp);
+        stepp->type += DEF_STEP_DATA_EXT;
     }
     return(stepp);
 }
@@ -505,7 +506,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 
         case '"':
             push_back(inputp);
-            step = ac_new_step(STEP_TYPE_STRCODE, rootp, curstepp);
+            step = ac_new_step(STEP_TYPE_TOKEN, rootp, curstepp);
             if (!step) {
                 ac_error(ERROR_MEMORY_ALLOC, "strcode");
                 return(NULLP);
@@ -706,7 +707,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 return(ac_step_datap(inputp, step));
             }
             else if (check_char(inputp, '(')) {
-                step = ac_new_step(STEP_TYPE_MULTI_STRCODE, rootp, curstepp);
+                step = ac_new_step(STEP_TYPE_MULTI_TOKEN, rootp, curstepp);
                 if (!step) {
                     ac_error(ERROR_MEMORY_ALLOC, "multicode");
                     return(NULLP);
@@ -740,7 +741,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 /* Check list count */
                 if (step->datap.strlistp->nextp == NULLP) {
                     datalist = step->datap.strlistp;
-                    step->type = STEP_TYPE_STRCODE;
+                    step->type = STEP_TYPE_TOKEN;
                     step->datap.codes = datalist->data.codes;
                     mem_free(datalist);
                 }
