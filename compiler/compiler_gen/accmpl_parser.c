@@ -411,11 +411,18 @@ static int ac_add_symbol_list(char *symbols)
     return(TRUE);
 }
 
-static void ac_step_datap(PTR inputp, pac_step_ stepp)
+static pac_step_ ac_step_datap(PTR inputp, pac_step_ stepp)
 {
+    char *stepdata;
     if (check_char(inputp, '(')) {
-        stepp->stp_datap = get_next_code(inputp, ')', '(');
+        stepdata = get_next_code(inputp, ')', '(');
+        if (!stepdata) {
+            ac_free_step(&stepp);
+            return(NULLP);
+        }
+        stepp->stp_datap = ac_list_add_ordered_str(stepdata, &cmplgen.stepdata_listp);
     }
+    return(stepp);
 }
 
 static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
@@ -494,8 +501,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 return(NULLP);
             }
             step->datap.chr = chr;
-            ac_step_datap(inputp, step);
-            return(step);
+            return(ac_step_datap(inputp, step));
 
         case '"':
             push_back(inputp);
@@ -509,8 +515,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_free_step(&step);
                 return(NULLP);
             }
-            ac_step_datap(inputp, step);
-            return(step);
+            return(ac_step_datap(inputp, step));
 
         case '<' :
             if (! get_identstr(inputp, idents)) {
@@ -540,8 +545,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 
             tmptrpc->inuseb = TRUE;
             step->datap.procp = tmptrpc;
-            ac_step_datap(inputp, step);
-            return(step);
+            return(ac_step_datap(inputp, step));
 
         case '^':
             if (check_char(inputp, '(')) {
@@ -598,8 +602,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                     step->datap.procp = ac_get_procptr(cmplgen.proc_listp, datalist->data.inl);
                     mem_free(datalist);
                 }
-                ac_step_datap(inputp, step);
-                return(step);
+                return(ac_step_datap(inputp, step));
             }
             else {
                 if (!ac_get_keyword(inputp, idents)) {
@@ -624,8 +627,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 }
                 tmptrpc->inuseb = TRUE;
                 step->datap.procp = tmptrpc;
-                ac_step_datap(inputp, step);
-                return(step);
+                return(ac_step_datap(inputp, step));
             }
 
         case '~' :
@@ -682,8 +684,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                     return(NULLP);
                 }           
             }
-            ac_step_datap(inputp, step);
-            return(step);
+            return(ac_step_datap(inputp, step));
 
         case '%' :
             if (peek(inputp) == '"') {
@@ -702,8 +703,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 }
 
                 step->datap.codes = identp;
-                ac_step_datap(inputp, step);
-                return(step);
+                return(ac_step_datap(inputp, step));
             }
             else if (check_char(inputp, '(')) {
                 step = ac_new_step(STEP_TYPE_MULTI_STRCODE, rootp, curstepp);
@@ -749,8 +749,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_error(ERROR_EXPECTED, "char", '(');
                 return(NULLP);
             }
-            ac_step_datap(inputp, step);
-            return(step);
+            return(ac_step_datap(inputp, step));
 
         default:
             push_back(inputp);
@@ -786,8 +785,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_error(ERROR_MEMORY_ALLOC, "procseq");
                 return(NULLP);
             }
-            ac_step_datap(inputp, step);
-            return(step);
+            return(ac_step_datap(inputp, step));
     }
 
     return(NULLP);
