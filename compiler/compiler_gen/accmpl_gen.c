@@ -2,6 +2,15 @@
 #include "accmpluti.h"
 #include "accmpl.h"
 
+#define CAS_STEP_DEF(ste, def)                                                          \
+    case STEP_TYPE_##ste##_DATA:                                                        \
+        flagdata = TRUE;                                                                \
+    case STEP_TYPE_##ste:                                                               \
+        tab[(*index)++] = (flagdata) ? STEP_DEF_##def##_DATA: STEP_DEF_##def + stepext; \
+        if (flagdata) tab[(*index)++] = ac_get_str_index(cmplgenp->stepdata_listp, step->stp_datap);
+
+#define CAS_STEP(step)  CAS_STEP_DEF(step, step)
+
 char *ac_get_procname(pac_proc_ proc, int index)
 {
     while (proc) {
@@ -45,7 +54,7 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
     e_step_ext_ extl;
     char str[2];
 
-    int endpos, count;
+    int endpos, count, flagdata = FALSE;
 
     mem_reset(str, sizeof(str));
 
@@ -110,43 +119,34 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             tab[(*index)++] = STEP_DEF_PROCSEQ_BREAK;
             break;
 
-        case STEP_TYPE_LITERAL:
-            tab[(*index)++] = STEP_DEF_LITERAL + stepext;
+        CAS_STEP(LITERAL)
+            break;
+        
+        CAS_STEP(INTEGER)
             break;
 
-        case STEP_TYPE_INTEGER:
-            tab[(*index)++] = STEP_DEF_INTEGER + stepext;
+        CAS_STEP(CHAR)
             break;
 
-        case STEP_TYPE_CHAR:
-            tab[(*index)++] = STEP_DEF_CHAR + stepext;
+        CAS_STEP(FLOAT)
             break;
 
-        case STEP_TYPE_FLOAT:
-            tab[(*index)++] = STEP_DEF_FLOAT + stepext;
+        CAS_STEP(STRING)
             break;
 
-        case STEP_TYPE_STRING:
-            tab[(*index)++] = STEP_DEF_STRING + stepext;
+        CAS_STEP(GETIDENT)
             break;
 
-        case STEP_TYPE_GETIDENT:
-            tab[(*index)++] = STEP_DEF_GETIDENT + stepext;
-            break;
-
-        case STEP_TYPE_EXEC_PROC:
-            tab[(*index)++] = STEP_DEF_EXECPROC + stepext;
+        CAS_STEP(EXEC_PROC)
             tab[(*index)++] = step->datap.procp->index;
             break; 
 
-        case STEP_TYPE_EXEC_KEYWORD:
-            tab[(*index)++] = STEP_DEF_EXECKEYWORD + stepext;
+        CAS_STEP(EXEC_KEYWORD)
             tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, step->datap.procp->names);
             tab[(*index)++] = step->datap.procp->index;
             break;
 
-        case STEP_TYPE_EXEC_ONEKEYWORD:
-            tab[(*index)++] = STEP_DEF_EXECONEKEYWORD + stepext;
+        CAS_STEP(EXEC_ONEKEYWORD)
             endpos = (*index)++;
             count = 0;
             strlistp = step->datap.strlistp;
@@ -159,13 +159,11 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             tab[endpos] = count;
             break;
 
-        case STEP_TYPE_KEYWORD:
-            tab[(*index)++] = STEP_DEF_KEYWORD + stepext;
+        CAS_STEP(KEYWORD)
             tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, step->datap.codes);
             break;
 
-        case STEP_TYPE_MULTI_KEYWORD:
-            tab[(*index)++] = STEP_DEF_MULTI_KEYWORD + stepext;
+        CAS_STEP(MULTI_KEYWORD)
             endpos = (*index)++;
             count  = 0;
             strlistp = step->datap.strlistp;
@@ -177,13 +175,11 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             tab[endpos] = count;
             break;
 
-        case STEP_TYPE_STRCODE:
-            tab[(*index)++] = STEP_DEF_TOKEN + stepext;
+        CAS_STEP(TOKEN)
             tab[(*index)++] = ac_get_str_index(cmplgenp->token_listp, step->datap.codes);
             break;
 
-        case STEP_TYPE_MULTI_STRCODE:
-            tab[(*index)++] = STEP_DEF_MULTI_TOKEN + stepext;
+        CAS_STEP(MULTI_TOKEN)
             endpos = (*index)++;
             count = 0;
             strlistp = step->datap.strlistp;
@@ -195,14 +191,12 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             tab[endpos] = count;
             break;
 
-        case STEP_TYPE_SYMBOL:
+        CAS_STEP_DEF(SYMBOL, TOKEN)
             str[0] = step->datap.chr;
-            tab[(*index)++] = STEP_DEF_TOKEN + stepext;
             tab[(*index)++] = ac_get_str_index(cmplgenp->token_listp, str);
             break;
 
-        case STEP_TYPE_MULTI_SYMBOL:
-            tab[(*index)++] = STEP_DEF_MULTI_TOKEN + stepext;
+        CAS_STEP_DEF(MULTI_SYMBOL, MULTI_TOKEN)
             tab[(*index)++] = (int)strlen(step->datap.codes);
             for (count = 0; count < (int) strlen(step->datap.codes); count++) {
                 str[0] = step->datap.codes[count];
@@ -211,14 +205,15 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             break;
 
         default :
-            extl = (step->type - STEP_TYPE_EXEC_PROC) % 4 + 1;
+            extl = (step->type - STEP_TYPE_EXEC_PROC) % 8 + 1;
+            if (extl > 4) {
+                extl -= 4;
+            }
+
             if (extl > 0) {
                 exttype = step->type - extl + 1;
 
                 ac_add_step(cmplgenp, step, exttype, extl, tab, index);
-            }
-            else {
-                tab[(*index)++] = -10 * step->type;
             }
     }
 }
