@@ -398,6 +398,13 @@ static int ac_add_symbol_list(char *symbols)
     return(TRUE);
 }
 
+static void ac_step_datap(PTR inputp, pac_step_ stepp)
+{
+    if (check_char(inputp, '(')) {
+        stepp->stp_datap = get_next_code(inputp, ')', '(');
+    }
+}
+
 static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 {
     pac_proc_ tmptrpc;
@@ -474,6 +481,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 return(NULLP);
             }
             step->datap.chr = chr;
+            ac_step_datap(inputp, step);
             return(step);
 
         case '"':
@@ -488,6 +496,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_free_step(&step);
                 return(NULLP);
             }
+            ac_step_datap(inputp, step);
             return(step);
 
         case '<' :
@@ -518,6 +527,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
 
             tmptrpc->inuseb = TRUE;
             step->datap.procp = tmptrpc;
+            ac_step_datap(inputp, step);
             return(step);
 
         case '^':
@@ -569,7 +579,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                         return(NULLP);
                     }
                 }
-                
+                ac_step_datap(inputp, step);
                 return(step);
             }
             else {
@@ -595,6 +605,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 }
                 tmptrpc->inuseb = TRUE;
                 step->datap.procp = tmptrpc;
+                ac_step_datap(inputp, step);
                 return(step);
             }
 
@@ -646,6 +657,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                     return(NULLP);
                 }           
             }
+            ac_step_datap(inputp, step);
             return(step);
 
         case '%' :
@@ -665,6 +677,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 }
 
                 step->datap.codes = identp;
+                ac_step_datap(inputp, step);
                 return(step);
             }
             else if (check_char(inputp, '(')) {
@@ -705,7 +718,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_error(ERROR_EXPECTED, "char", '(');
                 return(NULLP);
             }
-
+            ac_step_datap(inputp, step);
             return(step);
 
         default:
@@ -742,7 +755,7 @@ static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
                 ac_error(ERROR_MEMORY_ALLOC, "procseq");
                 return(NULLP);
             }
-
+            ac_step_datap(inputp, step);
             return(step);
     }
 
