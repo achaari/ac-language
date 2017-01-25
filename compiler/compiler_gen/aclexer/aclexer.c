@@ -16,9 +16,9 @@ typedef struct file_ {
 
 typedef struct lexer_ {
     pac_file_ file;
-    int       line;
+    //int       line;
     char      *current;
-    char      *debline;
+    //char      *debline;
     char      *savepos;
     int       lasstat; 
     /* For user process read */
@@ -94,7 +94,6 @@ static int __next(pac_lexer_ srcp, int forcenewline)
 
             case '\n' :
                 srcp->current++;
-                srcp->line++;
                 newline = TRUE;
                 if (incomment == 1) {
                     incomment = 0;
@@ -176,10 +175,6 @@ static int __next(pac_lexer_ srcp, int forcenewline)
         }
     }
 
-    if (newline) {
-        srcp->debline = srcp->current;
-    }
-
     return(TRUE);
 }
 
@@ -198,8 +193,6 @@ pac_lexer_ opensource(const char *filename)
     }
 
     srcp->current = srcp->file->code;
-    srcp->debline = srcp->current;
-    srcp->line    = 1;
 
     return(srcp);
 }
@@ -445,107 +438,42 @@ int check_code(pac_lexer_ srcp, char *valp)
     return(TRUE);
 }
 
-char *get_to_code(pac_lexer_ srcp, char *startstr, char *tostrs, char *codep, int skipstr)
+char *get_next_code(pac_lexer_ srcp, char split, char reset)
 {
-    char peekc, *tmp, *debcom;
+    char peekc, *cur, *next;
+    int idx = 1;
 
-    if (startstr == NULLP) {
-        startstr = srcp->current;
-    }
-
-    tmp = strstr(startstr, tostrs);
-    debcom = strstr(startstr, "/*");
-
-    if (! tmp) return(NULLP);
-
-    if (debcom && debcom < tmp) {
-        tmp = strstr(startstr, "*/");
-        if (tmp == NULLP) return(NULLP);
-        return(get_to_code(srcp,tmp+2,tostrs,codep,skipstr));
-    }
-
-    peekc = *tmp; *tmp = '\0';
-    strcpy(codep, startstr);
-    *tmp = peekc;
-    srcp->current = tmp + (skipstr ? strlen(tostrs) :0) ;
-    srcp->lasstat = TRUE;
-    return(codep);
-}
-
-char *get_to_code_alloc(pac_lexer_ srcp, char *startstr, char *tostrs, int skipstr)
-{
-    char peekc, *tmp, *debcom;
-    char *codep;
-
-    if (startstr == NULLP) {
-        startstr = srcp->current;
-    }
-
-    tmp = strstr(startstr, tostrs);
-    debcom = strstr(startstr, "/*");
-
-    if (! tmp) return(NULLP);
-
-    if (debcom && debcom < tmp) {
-        tmp = strstr(startstr, "*/");
-        if (tmp == NULLP) return(NULLP);
-        return(get_to_code_alloc(srcp,tmp+2,tostrs,skipstr));
-    }
-
-    peekc = *tmp; *tmp = '\0';
-    codep = st_dup(startstr);
-    *tmp = peekc;
-    srcp->current = tmp + (skipstr ? strlen(tostrs) :0) ;
-    srcp->lasstat = TRUE;
-    return(codep);
-}
-
-char *split_code(pac_lexer_ srcp, char *tostrs, char *codep)
-{
-    char peekc, *tmp = NULLP, *curp; 
-    
-    while (*tostrs != '\0') {
-        curp = strchr(srcp->current, *tostrs);
-        if (curp && (!tmp || curp < tmp)) {
-            tmp = curp;
+    cur = srcp->current;
+    while (idx > 0) {
+        if (cur == NULLP || *cur == '\0' || *cur == EOF) {
+            break;
         }
-        tostrs++;
-    }
-
-    *codep = '\0';
-
-    if (! tmp) return(NULLP);
-
-    peekc = *tmp; *tmp = '\0';
-    strcpy(codep, srcp->current);
-    *tmp = peekc;
-    srcp->current = tmp;
-    srcp->lasstat = TRUE;
-    return(codep);
-}
-
-char *split_code_with_alloc(pac_lexer_ srcp, char *tostrs)
-{
-    char peekc, *tmp = NULLP, *curp; 
-    char *codep;
-    
-    while (*tostrs != '\0') {
-        curp = strchr(srcp->current, *tostrs);
-        if (curp && (!tmp || curp < tmp)) {
-            tmp = curp;
+        else if (*cur == reset) {
+            idx++; cur++;
         }
-        tostrs++;
+        else if (*cur == split) {
+            idx--; cur++;
+        }
+        else if (*cur == '/' && *(cur+1) == '*') {
+            cur = strstr(cur, "/*");
+        }
+        else if (*cur == '/' && *(cur + 1) == '/') {
+            cur = strchr(cur, '\n');
+        }
+        else {
+            cur++;
+        }
     }
 
-    if (! tmp) return(NULLP);
+    if (cur == NULLP) {
+        return(NULLP);
+    }
 
-    peekc = *tmp; *tmp = '\0';
-    codep = st_dup(srcp->current);
-
-    *tmp = peekc;
-    srcp->current = tmp;
-    srcp->lasstat = TRUE;
-    return(codep);
+    peekc = *(cur-1); *(cur-1) = '\0';
+    next = st_dup(srcp->current);
+    *(cur - 1) = peekc;
+    srcp->current = cur;
+    return(next);
 }
 
 int check_char(pac_lexer_ srcp, char valc)
