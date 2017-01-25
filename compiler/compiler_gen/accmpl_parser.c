@@ -153,6 +153,7 @@ static pac_step_ ac_get_control_step(PTR inputp, e_step_type_ type, pac_step_ ro
         /* Pure control optional step */
         rootp->type = rootp->headp->type + type - STEP_TYPE_PROCSEQ;
         rootp->headp->type = STEP_TYPE_NAN; /* To avoid freeing datap */
+        rootp->stp_datap = rootp->headp->stp_datap;
         mem_copy(&rootp->headp->datap, &rootp->datap, sizeof(rootp->datap));
         ac_free_step(&rootp->headp);
 
