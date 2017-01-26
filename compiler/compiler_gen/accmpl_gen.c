@@ -3,14 +3,15 @@
 #include "accmplstep.h"
 #include "accmpl.h"
 
-#define CAS_STEP_DEF(ste, def)                                                             \
+#define CASE_STEP_DEF(ste, def)                                                             \
     case CMPLSTEP_TYPE_##ste##_EXT:                                                        \
         flagdata = TRUE;                                                                   \
     case CMPLSTEP_TYPE_##ste:                                                              \
         tab[(*index)++] = ((flagdata) ? STEP_DEF_##def##_DATA : STEP_DEF_##def) + stepext; \
         if (flagdata) tab[(*index)++] = ac_get_str_index(cmplgenp->stepdata_listp, step->stp_datap);
 
-#define CAS_STEP(ste)  CAS_STEP_DEF(ste, ste)
+#define CASE_STEP(ste)     CASE_STEP_DEF(ste, ste)
+#define CASE_STEP_NO(ste)  CASE_STEP_DEF(ste, ste) break;
 
 char *ac_get_procname(pac_proc_ proc, int index)
 {
@@ -65,6 +66,13 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_cmplstep_ step, e_cmplstep_ty
     }
 
     switch (steptype) {
+        CASE_STEP_NO(LITERAL)        
+        CASE_STEP_NO(INTEGER)
+        CASE_STEP_NO(CHAR)
+        CASE_STEP_NO(FLOAT)
+        CASE_STEP_NO(STRING)
+        CASE_STEP_NO(GETIDENT)
+
         case CMPLSTEP_TYPE_OPTSEQ:  
         case CMPLSTEP_TYPE_OPTLOOP:
 
@@ -119,36 +127,18 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_cmplstep_ step, e_cmplstep_ty
 
         case CMPLSTEP_TYPE_PROCSEQ_BREAK:
             tab[(*index)++] = STEP_DEF_PROCSEQ_BREAK;
-            break;
+            break;       
 
-        CAS_STEP(LITERAL)
-            break;
-        
-        CAS_STEP(INTEGER)
-            break;
-
-        CAS_STEP(CHAR)
-            break;
-
-        CAS_STEP(FLOAT)
-            break;
-
-        CAS_STEP(STRING)
-            break;
-
-        CAS_STEP(GETIDENT)
-            break;
-
-        CAS_STEP(EXEC_PROC)
+        CASE_STEP(EXEC_PROC)
             tab[(*index)++] = step->datap.procp->index;
             break; 
 
-        CAS_STEP(EXEC_KEYWORD)
+        CASE_STEP(EXEC_KEYWORD)
             tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, step->datap.procp->names);
             tab[(*index)++] = step->datap.procp->index;
             break;
 
-        CAS_STEP(EXEC_ONEKEYWORD)
+        CASE_STEP(EXEC_ONEKEYWORD)
             endpos = (*index)++;
             count = 0;
             strlistp = step->datap.strlistp;
@@ -161,11 +151,11 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_cmplstep_ step, e_cmplstep_ty
             tab[endpos] = count;
             break;
 
-        CAS_STEP(KEYWORD)
+        CASE_STEP(KEYWORD)
             tab[(*index)++] = ac_get_str_index(cmplgenp->keyword_listp, step->datap.codes);
             break;
 
-        CAS_STEP(MULTI_KEYWORD)
+        CASE_STEP(MULTI_KEYWORD)
             endpos = (*index)++;
             count  = 0;
             strlistp = step->datap.strlistp;
@@ -177,11 +167,11 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_cmplstep_ step, e_cmplstep_ty
             tab[endpos] = count;
             break;
 
-        CAS_STEP(TOKEN)
+        CASE_STEP(TOKEN)
             tab[(*index)++] = ac_get_str_index(cmplgenp->token_listp, step->datap.codes);
             break;
 
-        CAS_STEP(MULTI_TOKEN)
+        CASE_STEP(MULTI_TOKEN)
             endpos = (*index)++;
             count = 0;
             strlistp = step->datap.strlistp;
@@ -193,12 +183,12 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_cmplstep_ step, e_cmplstep_ty
             tab[endpos] = count;
             break;
 
-        CAS_STEP_DEF(SYMBOL, TOKEN)
+        CASE_STEP_DEF(SYMBOL, TOKEN)
             str[0] = step->datap.chr;
             tab[(*index)++] = ac_get_str_index(cmplgenp->token_listp, str);
             break;
 
-        CAS_STEP_DEF(MULTI_SYMBOL, MULTI_TOKEN)
+        CASE_STEP_DEF(MULTI_SYMBOL, MULTI_TOKEN)
             tab[(*index)++] = (int)strlen(step->datap.codes);
             for (count = 0; count < (int) strlen(step->datap.codes); count++) {
                 str[0] = step->datap.codes[count];
