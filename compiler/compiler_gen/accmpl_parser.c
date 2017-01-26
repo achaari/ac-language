@@ -3,6 +3,7 @@
 #include "aclexer.h"
 
 #include "accmpluti.h"
+#include "accmplstep.h"
 
 const char *rep = "D:\\ach projects\\accmplgen\\acdir\\";
 
@@ -14,9 +15,6 @@ FILE *tracefp = NULLP;
 #endif
 
 static ac_cmplgen_ cmplgen;
-
-static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp);
-
 static int proc_index = 0;
 
 static pac_proc_ ac_add_proc(pac_proc_ inproc, int isdecb)
@@ -63,7 +61,7 @@ static pac_proc_ ac_add_proc(pac_proc_ inproc, int isdecb)
     return(curprocp);
 }
 
-static pac_proc_ ac_get_procptr(pac_proc_ proc, int index)
+pac_proc_ ac_get_procptr(pac_proc_ proc, int index)
 {
     while (proc) {
         if (proc->index == index) {
@@ -79,7 +77,7 @@ static pac_proc_ ac_get_procptr(pac_proc_ proc, int index)
     return(NULLP);
 }
 
-static pac_proc_ ac_get_proc(pac_proc_ proclistp, char *names)
+pac_proc_ ac_get_proc(pac_proc_ proclistp, char *names)
 {
     pac_proc_ curprocp = proclistp;
 
@@ -102,151 +100,7 @@ static pac_proc_ ac_get_proc(pac_proc_ proclistp, char *names)
 #endif    
 }
 
-static pac_step_ ac_new_step(e_step_type_ type, pac_step_ rootp, pac_step_ *curstepp)
-{
-    pac_step_ step = mem_get(sizeof(ac_step_));
-
-    if (step == NULLP) return(NULL);
-
-    step->type = type;
-
-    if (curstepp) {
-        if (*curstepp) (*curstepp)->nextp = step;
-        *curstepp = step;
-    }
-
-    step->rootp = rootp;
-
-    return(step);
-}
-
-static void ac_free_step(pac_step_ *step)
-{
-    /* ToDo free step data */
-    mem_free(*step);
-    *step = NULLP;
-}
-
-static pac_step_ ac_find_current_procseq(pac_step_ rootp)
-{
-    while (rootp) {
-        if (rootp->type == STEP_TYPE_PROCSEQ) {
-            return(rootp);
-        }
-
-        rootp = rootp->rootp;
-    }
-
-    return(NULLP);
-}
-
-static pac_step_ ac_get_control_step(PTR inputp, e_step_type_ type, pac_step_ rootp, pac_step_ *curstepp, char stopchar)
-{
-    pac_step_ step;
-
-    if (stopchar != NULLC && (peek(inputp) != stopchar))  {
-        ac_error(ERROR_EXPECTED, "char", stopchar);
-        return(NULLP);
-    }
-
-    if (curstepp && !*curstepp && (rootp->type == STEP_TYPE_OPTSEQ)) {
-        /* Pure control optional step */
-        rootp->type = rootp->headp->type + type - STEP_TYPE_PROCSEQ;
-        rootp->headp->type = STEP_TYPE_NAN; /* To avoid freeing datap */
-        rootp->stp_datap = rootp->headp->stp_datap;
-        mem_copy(&rootp->headp->datap, &rootp->datap, sizeof(rootp->datap));
-        ac_free_step(&rootp->headp);
-
-        step = rootp;
-    }
-    else {
-        step = ac_new_step(type, rootp, curstepp);
-        if (!step) {
-            ac_error(ERROR_MEMORY_ALLOC, "cntrolstep");
-            return(NULLP);
-        }       
-    }
-
-    if (type != STEP_TYPE_PROC_ACCEPT) {
-        step->headp = ac_find_current_procseq(rootp);
-        if (!step->headp) {
-            ac_free_step(&step);
-            ac_error(ERROR_NOT_IN_POCSEQ);
-            return(NULLP);
-        }
-
-        if (type == STEP_TYPE_PROCSEQ_RECALL) {
-            step->headp->stepflagb |= (1 << STEP_FLAG_RECALL);
-        }
-        else if (type == STEP_TYPE_PROCSEQ_BREAK) {
-            step->headp->stepflagb |= (1 << STEP_FLAG_BREAK);
-        }
-    }
-
-    return(step);
-}
-
-static pac_step_ ac_get_step_child(PTR inputp, pac_step_ rootp, char stopchar)
-{
-    pac_step_ nextp = NULLP, firstp = NULLP;
-
-    while (next(inputp)) {
-        if (check_char(inputp, stopchar)) {
-            break;
-        }
-        else if (check_char(inputp, '+')) {
-            if (rootp->type != STEP_TYPE_OPTSEQ) {
-                ac_error(ERROR_UNEXPECTED, "char", '+');
-                ac_free_step(&firstp);
-                return(NULL);
-            }
-            else if (!check_char(inputp, ']')) {
-                ac_error(ERROR_EXPECTED, "char", ']');
-                ac_free_step(&firstp);
-                return(NULL);
-            }
-            rootp->type = STEP_TYPE_OPTLOOP;
-            break;
-        }
-        else if (check_char(inputp, '*')) {
-            /* Recall ProcSequence */
-            if (! ac_get_control_step(inputp, STEP_TYPE_PROCSEQ_RECALL, rootp, &nextp, stopchar)) {
-                ac_error(ERROR_INVALID_STEP);
-                ac_free_step(&firstp);
-                return(NULL);
-            }       
-        }
-        else if (check_char(inputp, ',')) {
-            /* Break ProcSequence */
-            if (!ac_get_control_step(inputp, STEP_TYPE_PROCSEQ_BREAK, rootp, &nextp, stopchar)) {
-                ac_error(ERROR_INVALID_STEP);
-                ac_free_step(&firstp);
-                return(NULL);
-            }
-        }
-        else if (check_char(inputp, ';')) {
-            /* Accept current Proc */
-            if (!ac_get_control_step(inputp, STEP_TYPE_PROC_ACCEPT, rootp, &nextp, stopchar)) {
-                ac_error(ERROR_INVALID_STEP);
-                ac_free_step(&firstp);
-                return(NULL);
-            }
-        }
-        else if (! ac_get_step(inputp, rootp, &nextp)) {
-            ac_error(ERROR_INVALID_STEP);
-            ac_free_step(&firstp); 
-            return(NULL);
-        }
-        
-        if (!firstp) {
-            firstp = nextp;
-        }
-    }
-
-    return(firstp);
-}
-
-static int ac_list_add_strptr(char *str, pac_data_list_ *firstp)
+int ac_list_add_strptr(char *str, pac_data_list_ *firstp)
 {
     pac_data_list_ strlistp = *firstp;
     
@@ -275,7 +129,7 @@ static int ac_list_add_strptr(char *str, pac_data_list_ *firstp)
     return(FALSE);
 }
 
-static int ac_list_add_int(int inl, pac_data_list_ *firstp)
+int ac_list_add_int(int inl, pac_data_list_ *firstp)
 {
     pac_data_list_ strlistp = *firstp;
     
@@ -303,7 +157,7 @@ static int ac_list_add_int(int inl, pac_data_list_ *firstp)
     return(TRUE);
 }
 
-static char *ac_list_add_ordered_str(char *str, pac_data_list_ *firstp)
+char *ac_list_add_ordered_str(char *str, pac_data_list_ *firstp)
 {
     pac_data_list_ curkeyp, keyp = *firstp;
 
@@ -348,7 +202,7 @@ static char *ac_list_add_ordered_str(char *str, pac_data_list_ *firstp)
     return(str);
 }
 
-static char *ac_get_keyword(PTR inputp, char *keyword)
+char *ac_get_keyword(PTR inputp, char *keyword)
 {
     char *identp;
     
@@ -383,7 +237,7 @@ static char *ac_add_token(char *token)
     return(token);
 }
 
-static char *ac_get_token(PTR inputp)
+char *ac_get_token(PTR inputp)
 {
     char *identp;
 
@@ -395,14 +249,14 @@ static char *ac_get_token(PTR inputp)
     return(ac_add_token(identp));
 }
 
-static int ac_add_symbol(char symbolc)
+int ac_add_symbol(char symbolc)
 {
     char *identp = mem_get(2);
     identp[0] = symbolc;
     return(ac_add_token(identp) != NULLP);
 }
 
-static int ac_add_symbol_list(char *symbols)
+int ac_add_symbol_list(char *symbols)
 {
     for (unsigned int i = 0; i < strlen(symbols); i++) {
         if (! ac_add_symbol(symbols[i]))
@@ -412,390 +266,9 @@ static int ac_add_symbol_list(char *symbols)
     return(TRUE);
 }
 
-static pac_step_ ac_step_datap(PTR inputp, pac_step_ stepp)
+static int ac_proc_step(PTR inputp, pac_proc_ proc, pac_cmplstep_ *curstep)
 {
-    char *stepdata;
-    if (check_char(inputp, '(')) {
-        stepdata = get_next_code(inputp, ')', '(');
-        if (!stepdata) {
-            ac_free_step(&stepp);
-            return(NULLP);
-        }
-        stepp->stp_datap = ac_list_add_ordered_str(stepdata, &cmplgen.stepdata_listp);
-        stepp->type += DEF_STEP_DATA_EXT;
-    }
-    return(stepp);
-}
-
-static pac_step_ ac_get_step(PTR inputp, pac_step_ rootp, pac_step_ *curstepp)
-{
-    pac_proc_ tmptrpc;
-    pac_step_ step;
-    pac_data_list_ datalist;
-    char idents[MAX_LEN], *identp;
-    char chr = get(inputp);
-
-    switch (chr) {
-        case '{':
-            if (rootp && !rootp->headp && rootp->type == STEP_TYPE_OPTSEQ) {
-                ac_error(ERROR_INVALID_STEP, "procseq");
-                return(NULLP);
-            }
-
-            step = ac_new_step(STEP_TYPE_PROCSEQ, rootp, curstepp);
-            if (!step) {
-                ac_error(ERROR_MEMORY_ALLOC, "procseq");
-                return(NULLP);
-            }
-            step->childp = ac_get_step_child(inputp, step, '}');
-            if (! step->childp) {
-                ac_error(ERROR_MEMORY_ALLOC, "seqchild");
-                ac_free_step(&step); 
-                return(NULLP);
-            }
-            return(step);
-
-        case '[':
-            if (rootp && !rootp->headp && rootp->type == STEP_TYPE_OPTSEQ) {
-                ac_error(ERROR_INVALID_STEP, "optseq");
-                return(NULLP);
-            }
-
-            step = ac_new_step(STEP_TYPE_OPTSEQ, rootp, curstepp);
-            if (!step) {
-                ac_error(ERROR_MEMORY_ALLOC, "optseq");
-                return(NULLP);
-            }
-
-            step->headp = ac_get_step(inputp, NULLP, NULLP);
-            if (! step->headp) {
-                ac_error(ERROR_MEMORY_ALLOC, "optexpr");
-                ac_free_step(&step);
-                return(NULLP);
-            }
-
-            if (check_char(inputp, ']')) {
-                /* Optional Step */
-                return(step);
-            }
-
-            step->childp = ac_get_step_child(inputp, step, ']');
-            if (!step->childp && step->type == STEP_TYPE_OPTSEQ) {
-                ac_error(ERROR_MEMORY_ALLOC, "seqchild");
-                ac_free_step(&step);
-                return(NULLP);
-            }
-            return(step);
-
-        case '\'':
-            chr = get(inputp);
-            if (chr == EOF || !check_char(inputp, '\'')) {
-                ac_error(ERROR_INVALID_SYMBOL);
-                return(NULLP);
-            }
-            else if (! ac_add_symbol(chr)) {
-                return(NULLP);
-            }
-            
-            step = ac_new_step(STEP_TYPE_SYMBOL, rootp, curstepp);
-            if (!step) {
-                ac_error(ERROR_MEMORY_ALLOC, "symbol");
-                return(NULLP);
-            }
-            step->datap.chr = chr;
-            return(ac_step_datap(inputp, step));
-
-        case '"':
-            push_back(inputp);
-            step = ac_new_step(STEP_TYPE_TOKEN, rootp, curstepp);
-            if (!step) {
-                ac_error(ERROR_MEMORY_ALLOC, "strcode");
-                return(NULLP);
-            }
-            if (!(step->datap.codes = ac_get_token(inputp))) {
-                ac_error(ERROR_EXPECTED, "string");
-                ac_free_step(&step);
-                return(NULLP);
-            }
-            return(ac_step_datap(inputp, step));
-
-        case '<' :
-            if (! get_identstr(inputp, idents)) {
-                ac_error(ERROR_EXPECTED, "identifier");
-                return(NULLP);
-            }
-            else if (!check_char(inputp, '>')) {
-                ac_error(ERROR_EXPECTED, "char", '>');
-                return(NULLP);
-            }
-
-            tmptrpc = ac_get_proc(cmplgen.proc_listp, idents);
-            if (!tmptrpc) {
-                ac_error(ERROR_UNDEFINED_PROC, idents);
-                return(NULLP);
-            }
-            else if (tmptrpc->type != PROC_TYPE_PROC){
-                ac_error(ERROR_UNEXPECTED_PROC, idents);
-                return(NULLP);
-            }
-
-            step = ac_new_step(STEP_TYPE_EXEC_PROC, rootp, curstepp);
-            if (!step) {
-                ac_error(ERROR_MEMORY_ALLOC, "execproc");
-                return(NULLP);
-            }
-
-            tmptrpc->inuseb = TRUE;
-            step->datap.procp = tmptrpc;
-            return(ac_step_datap(inputp, step));
-
-        case '^':
-            if (check_char(inputp, '(')) {
-                step = ac_new_step(STEP_TYPE_EXEC_ONEKEYWORD, rootp, curstepp);
-                if (!step) {
-                    ac_error(ERROR_MEMORY_ALLOC, "execonekeyword");
-                    return(NULLP);
-                }
-
-                while (next(inputp)) {
-                    if (!(identp = ac_get_keyword(inputp, NULLP))) {
-                        ac_error(ERROR_EXPECTED, "identifier");
-                        ac_free_step(&step);
-                        return(NULLP);
-                    }
-
-                    tmptrpc = ac_get_proc(cmplgen.proc_listp, identp);
-                    if (!tmptrpc) {
-                        ac_error(ERROR_UNDEFINED_PROC, identp);
-                        ac_free_step(&step);
-                        return(NULLP);
-                    }
-                    else if (tmptrpc->type != PROC_TYPE_KEYWORD){
-                        ac_error(ERROR_UNEXPECTED_PROC, identp);
-                        ac_free_step(&step);
-                        return(NULLP);
-                    }
-
-                    if (! ac_list_add_int(tmptrpc->index, &step->datap.strlistp)) {
-                        ac_error(ERROR_MEMORY_ALLOC, "keyliste");
-                        ac_free_step(&step);
-                        return(NULLP);
-                    }
-
-                    tmptrpc->inuseb = TRUE;
-
-                    if (check_char(inputp, ',')) {
-                        continue;
-                    }
-                    else if (check_char(inputp, ')')) {
-                        break;
-                    }
-                    else {
-                        ac_error(ERROR_EXPECTED, "char", ')');
-                        ac_free_step(&step);
-                        return(NULLP);
-                    }
-                }
-
-                /* Check list count */
-                if (step->datap.strlistp->nextp == NULLP) {
-                    datalist = step->datap.strlistp;
-                    step->type = STEP_TYPE_EXEC_KEYWORD;
-                    step->datap.procp = ac_get_procptr(cmplgen.proc_listp, datalist->data.inl);
-                    mem_free(datalist);
-                }
-                return(ac_step_datap(inputp, step));
-            }
-            else {
-                if (!ac_get_keyword(inputp, idents)) {
-                    ac_error(ERROR_EXPECTED, "identifier");
-                    return(NULLP);
-                }
-
-                tmptrpc = ac_get_proc(cmplgen.proc_listp, idents);
-                if (!tmptrpc) {
-                    ac_error(ERROR_UNDEFINED_PROC, idents);
-                    return(NULLP);
-                }
-                else if (tmptrpc->type != PROC_TYPE_KEYWORD){
-                    ac_error(ERROR_UNEXPECTED_PROC, idents);
-                    return(NULLP);
-                }
-
-                step = ac_new_step(STEP_TYPE_EXEC_KEYWORD, rootp, curstepp);
-                if (!step) {
-                    ac_error(ERROR_MEMORY_ALLOC, "execkeyword");
-                    return(NULLP);
-                }
-                tmptrpc->inuseb = TRUE;
-                step->datap.procp = tmptrpc;
-                return(ac_step_datap(inputp, step));
-            }
-
-        case '~' :
-            if (check_char(inputp, '(')) {
-                step = ac_new_step(STEP_TYPE_MULTI_KEYWORD, rootp, curstepp);
-                if (!step) {
-                    ac_error(ERROR_MEMORY_ALLOC, "keyliste");
-                    return(NULLP);
-                }
-
-                while (next(inputp)) {
-                    if (!(identp = ac_get_keyword(inputp, NULLP))) {
-                        ac_error(ERROR_EXPECTED, "identifier");
-                        ac_free_step(&step);
-                        return(NULLP);
-                    }
-                    else if (! ac_list_add_strptr(identp, &step->datap.strlistp)) {
-                        ac_error(ERROR_MEMORY_ALLOC, "keyliste");
-                        ac_free_step(&step);
-                        return(NULLP);
-                    }
-                    
-                    if (check_char(inputp, ',')) {
-                        continue;
-                    }
-                    else if (check_char(inputp, ')')) {
-                        break;
-                    }
-                    else {
-                        ac_error(ERROR_EXPECTED, "char", ')');
-                        ac_free_step(&step);
-                        return(NULLP);
-                    }
-                }
-
-                /* Check list count */
-                if (step->datap.strlistp->nextp == NULLP) {
-                    datalist = step->datap.strlistp;
-                    step->type = STEP_TYPE_KEYWORD;
-                    step->datap.codes = datalist->data.codes;
-                    mem_free(datalist);
-                }
-            }
-            else {
-                step = ac_new_step(STEP_TYPE_KEYWORD, rootp, curstepp);
-                if (!step) {
-                    ac_error(ERROR_MEMORY_ALLOC, "keyword");
-                    return(NULLP);
-                }
-
-                if (!(step->datap.codes = ac_get_keyword(inputp, NULLP))) {
-                    ac_error(ERROR_EXPECTED, "identifier");
-                    ac_free_step(&step); 
-                    return(NULLP);
-                }           
-            }
-            return(ac_step_datap(inputp, step));
-
-        case '%' :
-            if (peek(inputp) == '"') {
-                if (! get_string(inputp, &identp)) {
-                    ac_error(ERROR_EXPECTED, "string");
-                    return(NULLP);
-                }
-                else if (!ac_add_symbol_list(identp)) {
-                    return(NULLP);
-                }
-
-                step = ac_new_step(STEP_TYPE_MULTI_SYMBOL, rootp, curstepp);
-                if (!step) {
-                    ac_error(ERROR_MEMORY_ALLOC, "multicode");
-                    return(NULLP);
-                }
-
-                step->datap.codes = identp;
-                return(ac_step_datap(inputp, step));
-            }
-            else if (check_char(inputp, '(')) {
-                step = ac_new_step(STEP_TYPE_MULTI_TOKEN, rootp, curstepp);
-                if (!step) {
-                    ac_error(ERROR_MEMORY_ALLOC, "multicode");
-                    return(NULLP);
-                }
-                
-                while (next(inputp)) {
-                    if (!(identp = ac_get_token(inputp))) {
-                        ac_error(ERROR_EXPECTED, "string");
-                        ac_free_step(&step); 
-                        return(NULLP);
-                    }
-                    else if (! ac_list_add_strptr(identp, &step->datap.strlistp)) {
-                        ac_error(ERROR_MEMORY_ALLOC, "multicode");
-                        ac_free_step(&step); 
-                        return(NULLP);
-                    }
-
-                    if (check_char(inputp, ',')) {
-                        continue;
-                    }
-                    else if (check_char(inputp, ')')) {
-                        break;
-                    }
-                    else {
-                        ac_error(ERROR_EXPECTED, "char", ')');
-                        ac_free_step(&step); 
-                        return(NULLP);
-                    }
-                }
-
-                /* Check list count */
-                if (step->datap.strlistp->nextp == NULLP) {
-                    datalist = step->datap.strlistp;
-                    step->type = STEP_TYPE_TOKEN;
-                    step->datap.codes = datalist->data.codes;
-                    mem_free(datalist);
-                }
-            }
-            else {
-                ac_error(ERROR_EXPECTED, "char", '(');
-                return(NULLP);
-            }
-            return(ac_step_datap(inputp, step));
-
-        default:
-            push_back(inputp);
-            if (! get_identstr(inputp, idents)) {
-                ac_error(ERROR_EXPECTED, "identifier");
-                return(NULLP);
-            }
-
-            if (iseqstr(idents, "ident")) {
-                step = ac_new_step(STEP_TYPE_GETIDENT, rootp, curstepp);
-            }
-            else if (iseqstr(idents, "literal")) {
-                step = ac_new_step(STEP_TYPE_LITERAL, rootp, curstepp);
-            }
-            else if (iseqstr(idents, "int")) {
-                step = ac_new_step(STEP_TYPE_INTEGER, rootp, curstepp);
-            }
-            else if (iseqstr(idents, "char")) {
-                step = ac_new_step(STEP_TYPE_CHAR, rootp, curstepp);
-            }
-            else if (iseqstr(idents, "flaot")) {
-                step = ac_new_step(STEP_TYPE_FLOAT, rootp, curstepp);
-            }
-            else if (iseqstr(idents, "string")) {
-                step = ac_new_step(STEP_TYPE_STRING, rootp, curstepp);
-            }
-            else {
-                ac_error(ERROR_UNEXPECTED_IDENT, idents);
-                return(NULLP);
-            }
-
-            if (!step) {
-                ac_error(ERROR_MEMORY_ALLOC, "procseq");
-                return(NULLP);
-            }
-            return(ac_step_datap(inputp, step));
-    }
-
-    return(NULLP);
-}
-
-static int ac_proc_step(PTR inputp, pac_proc_ proc, pac_step_ *curstep)
-{
-    pac_step_ step = ac_get_step(inputp, NULLP, NULLP);
+    pac_cmplstep_ step = ac_cmplstep_get_step(&cmplgen, inputp, NULLP, NULLP);
 
     if (step == NULLP) return(FALSE);
 
@@ -813,7 +286,7 @@ static int ac_proc_step(PTR inputp, pac_proc_ proc, pac_step_ *curstep)
 static int ac_proc(PTR inputp)
 {
     ac_proc_ proc, *procp;
-    pac_step_ step = NULLP;
+    pac_cmplstep_ step = NULLP;
 
     mem_reset(&proc, sizeof(ac_proc_));
 
