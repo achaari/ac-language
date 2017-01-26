@@ -2,6 +2,15 @@
 #include "accmpluti.h"
 #include "accmpl.h"
 
+#define CASE_STEP_DEF(stp, exc, mcr)                                                                                        \
+    case STEP_DEF_##stp:                                                                                                    \
+    case STEP_DEF_##stp##_DATA:                                                                                             \
+        fprintf(outputp, "%s%s%s%s", &__tabs[tablidx], prefixs[stat], stats[stat], #exc);                                   \
+        if (stepdef == STEP_DEF_##stp##_DATA)                                                                               \
+            fprintf(outputp, "_DATA(&(%s)%s", ac_get_str(cmplgenp->stepdata_listp, pxtab[(*indx)++]), (mcr) ? ", " : "");   \
+        else if (mcr) fprintf(outputp, "(");                                                                                \
+
+
 typedef enum {
     STAT_DESC_EXEC = 0,
     STAT_DESC_TRY,
@@ -65,32 +74,15 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             fprintf(outputp, "%sgoto __procseq_%d_end;\n", &__tabs[tablidx], cmplgenp->seqidx);
             break;
 
-        case STEP_DEF_EXEC_PROC:
-            fprintf(outputp, "%s%s%sEXECPROC(%s)%s", &__tabs[tablidx], prefixs[stat], stats[stat], ac_get_procname(cmplgenp->proc_listp, pxtab[(*indx)++]), postfixs[stat]);
-            break;   
-
-        case STEP_DEF_EXEC_PROC_DATA:
-            strdatap = ac_get_str(cmplgenp->stepdata_listp, pxtab[(*indx)++]);
-            fprintf(outputp, "%s%s%sEXECPROC_DATA(%s, &(%s))%s", &__tabs[tablidx], prefixs[stat], stats[stat], ac_get_procname(cmplgenp->proc_listp, pxtab[(*indx)++]), strdatap, postfixs[stat]);
-            break;
-
-        case STEP_DEF_EXEC_KEYWORD:
-            fprintf(outputp, "%s%s%sEXECKEYWORD(KEY(%s))%s", 
-                    &__tabs[tablidx], prefixs[stat], stats[stat], 
-                    ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)]), 
-                    postfixs[stat]);
+        CASE_STEP_DEF(EXEC_PROC, EXECPROC, TRUE)
+            fprintf(outputp, "%s)%s", ac_get_procname(cmplgenp->proc_listp, pxtab[(*indx)++]), postfixs[stat]);
+            break; 
+        
+        CASE_STEP_DEF(EXEC_KEYWORD, EXECKEYWORD, TRUE)
+            fprintf(outputp, "KEY(%s))%s", ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)]), postfixs[stat]);
             (*indx) += 2;
             break;
-
-        case STEP_DEF_EXEC_KEYWORD_DATA:
-            strdatap = ac_get_str(cmplgenp->stepdata_listp, pxtab[(*indx)++]);
-            fprintf(outputp, "%s%s%sEXECKEYWORD_DATA(KEY(%s), &(%s))%s",
-                &__tabs[tablidx], prefixs[stat], stats[stat],
-                ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)]),
-                strdatap, postfixs[stat]);
-            (*indx) += 2;
-            break;
-
+            
         case STEP_DEF_EXEC_ONEKEYWORD:
             fprintf(outputp, "%s%s%sEXECKEYWORD(", &__tabs[tablidx], prefixs[stat], stats[stat]);
             endl = pxtab[(*indx)++]; idx = 0;
