@@ -262,6 +262,15 @@ void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
         }
     }
 
+    if (cmplgenp->stepdata_listp) {
+        idx = 0;
+        strlistp = cmplgenp->stepdata_listp;
+        while (strlistp) {
+            strlistp->indexl = idx++;
+            strlistp = strlistp->nextp;
+        }
+    }
+
     proc = cmplgenp->proc_listp;
     while (proc) {
         if (!proc->isdefb) {
