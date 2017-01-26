@@ -58,11 +58,18 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
     int tablidx = strlen(__tabs) - level * 4;
     e_step_ext_ extl;
     e_step_def_ extdef;
-    char *token, *strdatap;
+    char *token;
     
     int endl, idx, prevseqidx;
 
     switch (stepdef) {
+        CASE_STEP_DEF(LITERAL,  LITERAL, FALSE)
+        CASE_STEP_DEF(INTEGER,  INTEGER, FALSE)
+        CASE_STEP_DEF(CHAR,     CHAR,    FALSE)
+        CASE_STEP_DEF(FLOAT,    FLOAT,   FALSE)
+        CASE_STEP_DEF(STRING,   STRING,  FALSE)
+        CASE_STEP_DEF(GETIDENT, IDENT,   FALSE)
+
         case STEP_DEF_ENDPROC:
             fprintf(outputp, "\n    return(__ac_end_proc(cmplhndp));\n}\n");
             break;
@@ -93,28 +100,8 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
                 idx++;
             }
             fprintf(outputp, ")%s", postfixs[stat]);
-            break;
-
-        CASE_STEP_DEF(LITERAL, LITERAL, FALSE)
-        CASE_STEP_DEF(INTEGER, INTEGER, FALSE)
-               
-
-        case STEP_DEF_CHAR:
-            fprintf(outputp, "%s%s%sCHAR%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
-            break;
-
-        case STEP_DEF_FLOAT:
-            fprintf(outputp, "%s%s%sFLOAT%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
-            break;
-
-        case STEP_DEF_STRING:
-            fprintf(outputp, "%s%s%sSTRING%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
-            break;
-
-        case STEP_DEF_GETIDENT:
-            fprintf(outputp, "%s%s%sIDENT%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
-            break;
-
+            break;        
+      
         case STEP_DEF_ACCEPTPROC:
             fprintf(outputp, "\n%sreturn(__ac_end_proc(cmplhndp));\n", &__tabs[tablidx]);
             break;
