@@ -1,11 +1,12 @@
 
 #include "accmpluti.h"
+#include "accmplstep.h"
 #include "accmpl.h"
 
 #define CAS_STEP_DEF(ste, def)                                                             \
-    case STEP_TYPE_##ste##_DATA:                                                           \
+    case CMPLSTEP_TYPE_##ste##_EXT:                                                        \
         flagdata = TRUE;                                                                   \
-    case STEP_TYPE_##ste:                                                                  \
+    case CMPLSTEP_TYPE_##ste:                                                              \
         tab[(*index)++] = ((flagdata) ? STEP_DEF_##def##_DATA : STEP_DEF_##def) + stepext; \
         if (flagdata) tab[(*index)++] = ac_get_str_index(cmplgenp->stepdata_listp, step->stp_datap);
 
@@ -46,12 +47,10 @@ static int ac_get_str_index(pac_data_list_ strlistp, char *keyword)
     return(-1);
 }
 
-static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ steptype, e_step_ext_ stepext, int *tab, int* index)
+static void ac_add_step(pac_cmplgen_ cmplgenp, pac_cmplstep_ step, e_cmplstep_type_ steptype, e_step_ext_ stepext, int *tab, int* index)
 {
-    pac_step_ substep;
+    pac_cmplstep_  substep;
     pac_data_list_ strlistp; 
-    e_step_type_ exttype;
-    e_step_ext_ extl;
     char str[2];
 
     int endpos, count, flagdata = FALSE;
@@ -60,15 +59,18 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
 
     if (steptype < 0) {
         steptype = step->type;
+        if (stepext == STEP_EXT_NA) {
+            stepext = step->ext;
+        }
     }
 
     switch (steptype) {
-        case STEP_TYPE_OPTSEQ:  
-        case STEP_TYPE_OPTLOOP:
+        case CMPLSTEP_TYPE_OPTSEQ:  
+        case CMPLSTEP_TYPE_OPTLOOP:
 
-            if (step->childp || (steptype == STEP_TYPE_OPTLOOP)) {
+            if (step->childp || (steptype == CMPLSTEP_TYPE_OPTLOOP)) {
                 stepext = STEP_EXT_NA;
-                tab[(*index)++] = (steptype == STEP_TYPE_OPTSEQ) ? STEP_DEF_OPTSEQ : STEP_DEF_OPTLOOP;
+                tab[(*index)++] = (steptype == CMPLSTEP_TYPE_OPTSEQ) ? STEP_DEF_OPTSEQ : STEP_DEF_OPTLOOP;
                 endpos = (*index)++;
             }
             else {
@@ -86,13 +88,13 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
 
                 tab[endpos] = *index;
             }
-            else if (steptype == STEP_TYPE_OPTLOOP) {
+            else if (steptype == CMPLSTEP_TYPE_OPTLOOP) {
                 tab[(*index)++] = STEP_DEF_NOOP;
                 tab[endpos]     = *index;
             }
             break;
 
-        case STEP_TYPE_PROCSEQ:
+        case CMPLSTEP_TYPE_PROCSEQ:
             if (step->stepflagb) {
                 tab[(*index)++] = STEP_DEF_PROCSEQ;
                 endpos = (*index)++;
@@ -107,15 +109,15 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             }
             break;
 
-        case STEP_TYPE_PROC_ACCEPT:
+        case CMPLSTEP_TYPE_PROC_ACCEPT:
             tab[(*index)++] = STEP_DEF_ACCEPTPROC;
             break;
 
-        case STEP_TYPE_PROCSEQ_RECALL:
+        case CMPLSTEP_TYPE_PROCSEQ_RECALL:
             tab[(*index)++] = STEP_DEF_PROCSEQ_RECALL;
             break;
 
-        case STEP_TYPE_PROCSEQ_BREAK:
+        case CMPLSTEP_TYPE_PROCSEQ_BREAK:
             tab[(*index)++] = STEP_DEF_PROCSEQ_BREAK;
             break;
 
@@ -205,16 +207,8 @@ static void ac_add_step(pac_cmplgen_ cmplgenp, pac_step_ step, e_step_type_ step
             break;
 
         default :
-            extl = (step->type - STEP_TYPE_EXEC_PROC) % 8 + 1;
-            if (extl > 4) {
-                extl -= 4;
-            }
-
-            if (extl > 0) {
-                exttype = step->type - extl + 1;
-
-                ac_add_step(cmplgenp, step, exttype, extl, tab, index);
-            }
+            ac_error(UNEXPECTED_STEP, steptype);
+            tab[(*index)++] = -10 * steptype;
     }
 }
 
@@ -227,7 +221,7 @@ static char *ac_fmtstr(char *ori, char *dest)
 void ac_print_compiler(pac_cmplgen_ cmplgenp, FILE *outputp, int procount)
 {
     pac_proc_ proc;
-    pac_step_ step;
+    pac_cmplstep_ step;
     pac_data_list_ strlistp;
     char keystr[100];
 
