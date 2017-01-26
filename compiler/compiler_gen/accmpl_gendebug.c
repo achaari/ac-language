@@ -6,9 +6,10 @@
     case STEP_DEF_##stp:                                                                                                    \
     case STEP_DEF_##stp##_DATA:                                                                                             \
         fprintf(outputp, "%s%s%s%s", &__tabs[tablidx], prefixs[stat], stats[stat], #exc);                                   \
-        if (stepdef == STEP_DEF_##stp##_DATA)                                                                               \
+        if (stepdef == STEP_DEF_##stp##_DATA) {                                                                             \
             fprintf(outputp, "_DATA(&(%s)%s", ac_get_str(cmplgenp->stepdata_listp, pxtab[(*indx)++]), (mcr) ? ", " : "");   \
-        else if (mcr) fprintf(outputp, "(");                                                                                \
+            if (! mcr) { fprintf(outputp, ")%s", postfixs[stat]); break;}}                                                  \
+        else if (mcr) fprintf(outputp, "(");  else { fprintf(outputp, "%s", postfixs[stat]); break; }
 
 
 typedef enum {
@@ -94,13 +95,9 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             fprintf(outputp, ")%s", postfixs[stat]);
             break;
 
-        case STEP_DEF_LITERAL:
-            fprintf(outputp, "%s%s%sLITERAL%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
-            break;
-
-        case STEP_DEF_INTEGER:
-            fprintf(outputp, "%s%s%sINTEGER%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
-            break;
+        CASE_STEP_DEF(LITERAL, LITERAL, FALSE)
+        CASE_STEP_DEF(INTEGER, INTEGER, FALSE)
+               
 
         case STEP_DEF_CHAR:
             fprintf(outputp, "%s%s%sCHAR%s", &__tabs[tablidx], prefixs[stat], stats[stat], postfixs[stat]);
