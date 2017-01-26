@@ -82,6 +82,15 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             (*indx) += 2;
             break;
 
+        case STEP_DEF_EXEC_KEYWORD_DATA:
+            strdatap = ac_get_str(cmplgenp->stepdata_listp, pxtab[(*indx)++]);
+            fprintf(outputp, "%s%s%sEXECKEYWORD_DATA(KEY(%s), &(%s))%s",
+                &__tabs[tablidx], prefixs[stat], stats[stat],
+                ac_get_str(cmplgenp->keyword_listp, pxtab[(*indx)]),
+                strdatap, postfixs[stat]);
+            (*indx) += 2;
+            break;
+
         case STEP_DEF_EXEC_ONEKEYWORD:
             fprintf(outputp, "%s%s%sEXECKEYWORD(", &__tabs[tablidx], prefixs[stat], stats[stat]);
             endl = pxtab[(*indx)++]; idx = 0;
@@ -186,7 +195,12 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
             break;
 
         default:
-            extl = (stepdef - STEP_DEF_EXEC_PROC) % 5;
+            extl = (stepdef - STEP_DEF_EXEC_PROC) % 10;
+
+            if (extl >= 5) {
+                extl -= 5;
+            }
+
             if (extl > 0) {
                 extdef = stepdef - extl;
                 switch (extl) {
