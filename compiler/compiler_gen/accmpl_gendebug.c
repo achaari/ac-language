@@ -55,7 +55,7 @@ static char *ac_get_str(pac_data_list_ strlistp, int index)
 static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab, int *indx, int level, s_stat_desc_ stat, int maxendl, FILE *outputp)
 {
     const char *__tabs = "                                                                            ";
-    int tablidx = strlen(__tabs) - level * 4;
+    int tablidx = strlen(__tabs) - level * 4, tmpidx;
     e_step_ext_ extl;
     e_step_def_ extdef;
     char *token;
@@ -143,13 +143,31 @@ static void ac_print_step(pac_cmplgen_ cmplgenp, e_step_def_ stepdef, int *pxtab
         case STEP_DEF_PROCSEQ:
             prevseqidx = cmplgenp->seqidx;
             cmplgenp->seqidx = cmplgenp->procseq++;
-            fprintf(outputp, "\n%s__procseq_%d_beg:\n%s{\n", &__tabs[tablidx], cmplgenp->seqidx, &__tabs[tablidx]);
             endl = pxtab[(*indx)++];
+
+            /* Check if we need BEG Label */
+            for (tmpidx = *indx; tmpidx < endl; tmpidx++) {
+                if ((pxtab[(tmpidx)] == STEP_DEF_PROCSEQ_RECALL) ||
+                    (pxtab[(tmpidx)] >= STEP_DEF_EXEC_PROC && (pxtab[(tmpidx)] - STEP_DEF_EXEC_PROC) % 5 == STEP_EXT_RECALL_IF)) {
+                    fprintf(outputp, "\n%s__procseq_%d_beg:\n%s{\n", &__tabs[tablidx], cmplgenp->seqidx, &__tabs[tablidx]);
+                    break;
+                }
+            }
+
+            tmpidx = *indx;
             while (*indx < endl) {
                 ac_print_step(cmplgenp, pxtab[(*indx)++], pxtab, indx, level + 1, 0, endl, outputp);
             }
 
-            fprintf(outputp, "%s}\n%s__procseq_%d_end:\n", &__tabs[tablidx], &__tabs[tablidx], cmplgenp->seqidx);
+            /* Check if we need END Label */
+            for (; tmpidx < endl; tmpidx++) {
+                if ((pxtab[(tmpidx)] == STEP_DEF_PROCSEQ_BREAK) ||
+                    (pxtab[(tmpidx)] >= STEP_DEF_EXEC_PROC && (pxtab[(tmpidx)] - STEP_DEF_EXEC_PROC) % 5 == STEP_EXT_BREAK_IF)) {
+                    fprintf(outputp, "%s}\n%s__procseq_%d_end:\n", &__tabs[tablidx], &__tabs[tablidx], cmplgenp->seqidx);
+                    break;
+                }
+            }
+
             cmplgenp->seqidx = prevseqidx;
             break;
 
